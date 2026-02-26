@@ -125,7 +125,7 @@ export async function callGemini({ targetName, memo, images }) {
       temperature: 0.3,
       topP: 0.8,
       topK: 40,
-      maxOutputTokens: 4096,
+      maxOutputTokens: 8192,
       responseMimeType: "application/json",
     },
     safetySettings: [
@@ -170,11 +170,6 @@ export async function callGemini({ targetName, memo, images }) {
 
     const data = await res.json();
 
-    const finishReason = data.candidates?.[0]?.finishReason;
-    if (finishReason === "MAX_TOKENS") {
-      throw new Error("AI 응답이 너무 길어 잘렸습니다. 다시 시도해주세요.");
-    }
-
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!text) {
@@ -184,8 +179,22 @@ export async function callGemini({ targetName, memo, images }) {
     try {
       return JSON.parse(text);
     } catch {
+      // MAX_TOKENS로 잘렸을 때 JSON 객체 추출 시도
       const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) return JSON.parse(jsonMatch[0]);
+      if (jsonMatch) {
+        try {
+          return JSON.parse(jsonMatch[0]);
+        } catch {
+          // 잘린 JSON 복구 시도 (닫는 괄호 추가)
+          const partial = jsonMatch[0];
+          const fixed = partial + '"}}'.repeat(3);
+          try {
+            return JSON.parse(fixed);
+          } catch {
+            // 복구 불가
+          }
+        }
+      }
       throw new Error("AI 응답을 파싱할 수 없습니다. 다시 시도해주세요.");
     }
   } catch (err) {

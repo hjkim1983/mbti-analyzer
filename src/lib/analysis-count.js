@@ -11,9 +11,9 @@ export async function getAnalysisCount(deviceId) {
     .from("profiles")
     .select("id, analysis_count")
     .eq("device_id", deviceId)
-    .single();
+    .maybeSingle();
 
-  if (error && error.code === "PGRST116") {
+  if (!profile && (!error || error.code === "PGRST116")) {
     const { data: newProfile, error: insertErr } = await supabase
       .from("profiles")
       .insert({ device_id: deviceId, analysis_count: 0 })

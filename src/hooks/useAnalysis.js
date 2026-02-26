@@ -33,7 +33,7 @@ export default function useAnalysis() {
           .from("profiles")
           .select("analysis_count")
           .eq("device_id", deviceId)
-          .single();
+          .maybeSingle();
 
         if (data) {
           setFreeCount({
