@@ -1,6 +1,6 @@
 {
   "feature": "mbti-analyzer",
-  "phase": "plan",
+  "phase": "design",
   "matchRate": null,
   "iterationCount": 0,
   "startedAt": "2026-02-26T06:06:00Z",
@@ -10,6 +10,12 @@
       "action": "created",
       "timestamp": "2026-02-26T06:06:00Z",
       "document": "docs/01-plan/features/mbti-analyzer.plan.md"
+    },
+    {
+      "phase": "design",
+      "action": "created",
+      "timestamp": "2026-02-26T06:10:00Z",
+      "document": "docs/02-design/features/mbti-analyzer.design.md"
     }
   ]
 }
