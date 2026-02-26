@@ -19,7 +19,7 @@ GitHub 저장소 생성 후 표시되는 URL을 사용합니다.
 cd c:\Users\User\00webapp_test\mbti-analyzer
 
 # GitHub 저장소 URL로 교체하세요 (예: https://github.com/사용자명/mbti-analyzer.git)
-git remote add origin https://github.com/사용자명/mbti-analyzer.git
+git remote add origin https://github.com/hjkim1983/mbti-analyzer.git
 
 # main 브랜치로 푸시 (GitHub 기본 브랜치)
 git branch -M main
@@ -40,3 +40,5 @@ git push
 ./git-auto.sh "커밋 메시지"
 git push
 ```
+
+
