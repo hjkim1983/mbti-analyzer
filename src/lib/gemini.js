@@ -104,7 +104,8 @@ function buildUserParts({ targetName, memo, images }) {
 }
 
 export async function callGemini({ targetName, memo, images }) {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey =
+    process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
   if (!apiKey) {
     throw new Error("Gemini API 키가 설정되지 않았습니다.");
@@ -168,13 +169,25 @@ export async function callGemini({ targetName, memo, images }) {
     }
 
     const data = await res.json();
+
+    const finishReason = data.candidates?.[0]?.finishReason;
+    if (finishReason === "MAX_TOKENS") {
+      throw new Error("AI 응답이 너무 길어 잘렸습니다. 다시 시도해주세요.");
+    }
+
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!text) {
       throw new Error("Gemini 응답이 비어있습니다.");
     }
 
-    return JSON.parse(text);
+    try {
+      return JSON.parse(text);
+    } catch {
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) return JSON.parse(jsonMatch[0]);
+      throw new Error("AI 응답을 파싱할 수 없습니다. 다시 시도해주세요.");
+    }
   } catch (err) {
     clearTimeout(timeout);
     if (err.name === "AbortError") {
