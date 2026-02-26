@@ -246,7 +246,7 @@ export default function ResultScreen({
           <h3 className="font-extrabold text-gray-900 mb-4 flex items-center gap-2">
             <span
               className="w-7 h-7 rounded-xl flex items-center justify-center text-sm"
-              style={{ background: "#A29BFE" }}
+              style={{ background: "#BAE6FD" }}
             >
               👤
             </span>
@@ -261,13 +261,13 @@ export default function ResultScreen({
               <div
                 key={item.label}
                 className="flex items-start gap-3 p-3 rounded-2xl"
-                style={{ background: "rgba(237,233,254,0.6)" }}
+                style={{ background: "rgba(219,234,254,0.6)" }}
               >
                 <span className="flex-shrink-0 mt-0.5 text-lg">
                   {item.icon}
                 </span>
                 <div>
-                  <p className="text-xs font-bold text-purple-500 mb-0.5">
+                  <p className="text-xs font-bold text-blue-500 mb-0.5">
                     {item.label}
                   </p>
                   <p className="text-sm text-gray-700 font-medium">
@@ -286,11 +286,11 @@ export default function ResultScreen({
                 className="h-full rounded-full transition-all duration-1000"
                 style={{
                   width: `${profile.score}%`,
-                  background: "linear-gradient(90deg,#A29BFE,#7C3AED)",
+                  background: "linear-gradient(90deg,#38BDF8,#2563EB)",
                 }}
               />
             </div>
-            <span className="text-xl font-black" style={{ color: "#7C3AED" }}>
+            <span className="text-xl font-black" style={{ color: "#2563EB" }}>
               {profile.score}
             </span>
           </div>
