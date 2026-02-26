@@ -1,7 +1,7 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 
-const MODEL = "gemini-2.0-flash";
+const MODEL = "gemini-2.5-flash";
 const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 const TIMEOUT_MS = 30000;
 
@@ -104,8 +104,7 @@ function buildUserParts({ targetName, memo, images }) {
 }
 
 export async function callGemini({ targetName, memo, images }) {
-  const apiKey =
-    process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
     throw new Error("Gemini API 키가 설정되지 않았습니다.");
