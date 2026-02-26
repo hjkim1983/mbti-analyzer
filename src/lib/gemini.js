@@ -3,7 +3,8 @@ import { join } from "path";
 
 const MODEL = "gemini-2.5-flash";
 const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
-const TIMEOUT_MS = 30000;
+// 5장 이미지 기준 Gemini 처리 시간 여유 확보 (Vercel maxDuration=60과 맞춤)
+const TIMEOUT_MS = 55000;
 
 let cachedSkillPrompt = null;
 
@@ -127,6 +128,8 @@ export async function callGemini({ targetName, memo, images }) {
       topK: 40,
       maxOutputTokens: 8192,
       responseMimeType: "application/json",
+      // 이미지 5장 처리 시 응답 지연 방지: 후보 1개만 생성
+      candidateCount: 1,
     },
     safetySettings: [
       {

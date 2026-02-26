@@ -21,9 +21,10 @@ export default function useAnalysis() {
   const timerRef = useRef(null);
   const pendingPaymentId = useRef(null);
 
-  const isMulti = images.length >= 2;
+  const imageCount = images.length;
+  const isMulti = imageCount >= 2;
   const hasMemo = memo.trim().length > 0;
-  const canAnalyze = images.length > 0 || hasMemo;
+  const canAnalyze = imageCount > 0 || hasMemo;
 
   useEffect(() => {
     (async () => {
@@ -84,15 +85,18 @@ export default function useAnalysis() {
       setStage("loading");
       setLoadingStep(0);
 
-      const { messages } = getLoadingSteps(isMulti, hasMemo);
+      const { messages } = getLoadingSteps(isMulti, hasMemo, imageCount);
       let step = 0;
+
+      // 이미지 장수가 많을수록 각 단계 간격을 늘려 체감 대기시간 분산
+      const intervalMs = isMulti ? Math.max(900, imageCount * 600) : 900;
 
       timerRef.current = setInterval(() => {
         step++;
         if (step < messages.length) {
           setLoadingStep(step);
         }
-      }, 900);
+      }, intervalMs);
 
       apiPromise
         .then((data) => {
@@ -121,10 +125,11 @@ export default function useAnalysis() {
     async (paymentId = null) => {
       const deviceId = await getDeviceId();
 
-      // 이미지 Base64 변환
+      // 이미지 Base64 변환 (장수에 따라 자동 압축 강도 조정)
+      const total = images.length;
       const base64Images = await Promise.all(
         images.map(async (img) => {
-          const converted = await fileToBase64(img.file);
+          const converted = await fileToBase64(img.file, total);
           return {
             base64Data: converted.base64Data,
             mimeType: converted.mimeType,
@@ -230,6 +235,7 @@ export default function useAnalysis() {
     freeCount,
     error,
     isChecking,
+    imageCount,
     isMulti,
     hasMemo,
     canAnalyze,

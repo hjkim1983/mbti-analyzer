@@ -8,7 +8,7 @@ export default function LoadingScreen({
   hasMemo,
   imageCount,
 }) {
-  const { steps, messages, icons } = getLoadingSteps(isMulti, hasMemo);
+  const { steps, messages, icons } = getLoadingSteps(isMulti, hasMemo, imageCount);
 
   return (
     <div className="pt-14 flex flex-col items-center text-center anim-slide-up">

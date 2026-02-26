@@ -8,6 +8,10 @@ import {
 } from "@/lib/analysis-count";
 import { getMbtiMeta } from "@/constants/mbti-data";
 
+// Vercel Hobby: 최대 60초 / Pro: 최대 300초
+// 이미지 5장 분석 시 Gemini 처리 시간 확보
+export const maxDuration = 60;
+
 export async function POST(request) {
   try {
     const body = await request.json();
