@@ -1,0 +1,26 @@
+# 환경 변수 (API 키 등 민감정보 - 절대 커밋 금지)
+.env
+.env.local
+.env.*.local
+
+# 의존성
+node_modules/
+
+# 빌드 결과물
+.next/
+out/
+dist/
+build/
+
+# 로그 및 캐시
+*.log
+npm-debug.log*
+.cache/
+
+# OS 생성 파일
+.DS_Store
+Thumbs.db
+
+# IDE (선택)
+# .vscode/
+# .idea/

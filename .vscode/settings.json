@@ -1,0 +1,5 @@
+{
+  // Open In Default Browser 확장: 로컬 HTTP 서버 대신 file:// 프로토콜로 직접 열기
+  // (HTTP 서버가 실패할 때 브라우저가 안 열리는 문제 해결)
+  "openInDefaultBrowser.run.openWithLocalHttpServer": false
+}
