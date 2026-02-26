@@ -70,9 +70,20 @@ export async function POST(request) {
           {
             success: false,
             error: "ANALYSIS_TIMEOUT",
-            message: "분석 시간이 초과되었습니다. 다시 시도해주세요",
+            message: "분석 시간이 초과되었습니다. 다시 시도해주세요.",
           },
           { status: 504 },
+        );
+      }
+      if (err.message === "QUOTA_EXCEEDED") {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "QUOTA_EXCEEDED",
+            message:
+              "AI 서버 요청 한도를 초과했습니다. 1분 후 다시 시도해주세요.",
+          },
+          { status: 429 },
         );
       }
       console.error("Gemini 분석 오류:", err);
@@ -80,7 +91,7 @@ export async function POST(request) {
         {
           success: false,
           error: "ANALYSIS_FAILED",
-          message: "AI 분석 중 오류가 발생했습니다",
+          message: "AI 분석 중 오류가 발생했습니다.",
         },
         { status: 500 },
       );

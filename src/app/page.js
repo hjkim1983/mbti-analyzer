@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import UploadCard from "@/components/UploadCard";
@@ -14,8 +15,11 @@ import { getDeviceId } from "@/lib/device-id";
 import { FREE_LIMIT } from "@/lib/analysis-count";
 
 export default function Home() {
+  const [mounted, setMounted] = useState(false);
   const analysis = useAnalysis();
   const payment = usePayment();
+
+  useEffect(() => setMounted(true), []);
 
   const freeRemaining =
     analysis.freeCount != null
@@ -30,6 +34,14 @@ export default function Home() {
       analysis.onPaymentComplete(paymentId);
     }
   };
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-3 border-amber-400 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">

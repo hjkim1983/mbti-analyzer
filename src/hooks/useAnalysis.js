@@ -4,11 +4,12 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { fileToBase64 } from "@/lib/image-utils";
 import { getDeviceId } from "@/lib/device-id";
 import { getLoadingSteps } from "@/constants/loading-steps";
+import { supabase } from "@/lib/supabase";
 
 const FREE_LIMIT = 3;
 
 export default function useAnalysis() {
-  const [stage, setStage] = useState("main"); // main | payment | loading | result | error
+  const [stage, setStage] = useState("main");
   const [images, setImages] = useState([]);
   const [targetName, setTargetName] = useState("");
   const [memo, setMemo] = useState("");
@@ -24,20 +25,24 @@ export default function useAnalysis() {
   const hasMemo = memo.trim().length > 0;
   const canAnalyze = images.length > 0 || hasMemo;
 
-  // 초기 로드 시 무료 횟수 조회
   useEffect(() => {
     (async () => {
       try {
         const deviceId = await getDeviceId();
-        const res = await fetch("/api/analyze", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ deviceId, checkOnly: true }),
-        }).catch(() => null);
+        const { data } = await supabase
+          .from("profiles")
+          .select("analysis_count")
+          .eq("device_id", deviceId)
+          .single();
 
-        // checkOnly는 별도 구현 불필요 — 무료 횟수는 분석 시점에 확인
+        if (data) {
+          setFreeCount({
+            used: data.analysis_count,
+            remaining: Math.max(0, FREE_LIMIT - data.analysis_count),
+          });
+        }
       } catch {
-        // 무시
+        // 첫 사용자는 프로필이 없으므로 무시
       }
     })();
   }, []);

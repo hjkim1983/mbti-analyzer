@@ -161,8 +161,11 @@ export async function callGemini({ targetName, memo, images }) {
     clearTimeout(timeout);
 
     if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`Gemini API 오류 (${res.status}): ${err}`);
+      const errText = await res.text();
+      if (res.status === 429 || errText.includes("RESOURCE_EXHAUSTED")) {
+        throw new Error("QUOTA_EXCEEDED");
+      }
+      throw new Error(`Gemini API 오류 (${res.status}): ${errText}`);
     }
 
     const data = await res.json();
