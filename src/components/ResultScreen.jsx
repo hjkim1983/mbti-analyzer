@@ -145,7 +145,7 @@ export default function ResultScreen({
                     <div className="mt-1.5 space-y-0.5">
                       {ind.evidence.slice(0, 2).map((e, i) => (
                         <p key={i} className="text-xs text-gray-400 pl-1">
-                          • {e}
+                          • {typeof e === "object" ? JSON.stringify(e) : String(e)}
                         </p>
                       ))}
                     </div>
@@ -232,7 +232,7 @@ export default function ResultScreen({
                   {i + 1}
                 </div>
                 <span className="text-sm text-gray-700 font-medium">
-                  {trait}
+                  {typeof trait === "object" ? JSON.stringify(trait) : String(trait)}
                 </span>
               </div>
             ))}
@@ -311,7 +311,7 @@ export default function ResultScreen({
           </h3>
           {conflicts.map((c, i) => (
             <p key={i} className="text-xs text-amber-700 mb-1">
-              • {c}
+              • {typeof c === "object" ? (c.description || c.indicator || JSON.stringify(c)) : String(c)}
             </p>
           ))}
         </GlassCard>
