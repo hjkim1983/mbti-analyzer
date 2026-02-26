@@ -1,24 +1,20 @@
 export const MBTI_META = {
-  // EN__ — 밝은 파랑/스카이 계열
-  ENFP: { emoji: "🌟", title: "열정적인 활동가",        color: "#38BDF8" },
-  ENFJ: { emoji: "🌻", title: "정의로운 사회운동가",    color: "#0EA5E9" },
-  ENTP: { emoji: "💡", title: "뜨거운 논쟁가",          color: "#06B6D4" },
-  ENTJ: { emoji: "👑", title: "대담한 통솔자",           color: "#0891B2" },
-  // IN__ — 진한 파랑/인디고 계열
-  INFP: { emoji: "🦋", title: "열정적인 중재자",        color: "#818CF8" },
-  INFJ: { emoji: "🌿", title: "선의의 옹호자",           color: "#6366F1" },
-  INTP: { emoji: "🔬", title: "논리적인 사색가",        color: "#3B82F6" },
-  INTJ: { emoji: "🧠", title: "전략적 분석가",           color: "#2563EB" },
-  // ES__ — 밝은 청록/틸 계열
-  ESFP: { emoji: "🎭", title: "자유로운 영혼의 연예인", color: "#22D3EE" },
-  ESFJ: { emoji: "🤝", title: "사교적인 외교관",        color: "#0284C7" },
-  ESTP: { emoji: "⚡", title: "모험을 즐기는 사업가",   color: "#0369A1" },
-  ESTJ: { emoji: "📊", title: "엄격한 관리자",           color: "#1D4ED8" },
-  // IS__ — 중간 파랑/슬레이트 계열
-  ISFP: { emoji: "🎨", title: "호기심 많은 예술가",     color: "#60A5FA" },
-  ISFJ: { emoji: "🛡️", title: "용감한 수호자",          color: "#4F86C6" },
-  ISTP: { emoji: "🔧", title: "만능 재주꾼",             color: "#475569" },
-  ISTJ: { emoji: "📋", title: "청렴결백한 논리주의자",  color: "#334155" },
+  ENFP: { emoji: "🌟", title: "열정적인 활동가", color: "#FF6B6B" },
+  ENFJ: { emoji: "🌻", title: "정의로운 사회운동가", color: "#FFB347" },
+  ENTP: { emoji: "💡", title: "뜨거운 논쟁가", color: "#F39C12" },
+  ENTJ: { emoji: "👑", title: "대담한 통솔자", color: "#2ECC71" },
+  INFP: { emoji: "🦋", title: "열정적인 중재자", color: "#DDA0DD" },
+  INFJ: { emoji: "🌿", title: "선의의 옹호자", color: "#A29BFE" },
+  INTP: { emoji: "🔬", title: "논리적인 사색가", color: "#3498DB" },
+  INTJ: { emoji: "🧠", title: "전략적 분석가", color: "#4ECDC4" },
+  ESFP: { emoji: "🎭", title: "자유로운 영혼의 연예인", color: "#FD79A8" },
+  ESFJ: { emoji: "🤝", title: "사교적인 외교관", color: "#E74C3C" },
+  ESTP: { emoji: "⚡", title: "모험을 즐기는 사업가", color: "#00BCD4" },
+  ESTJ: { emoji: "📊", title: "엄격한 관리자", color: "#8E44AD" },
+  ISFP: { emoji: "🎨", title: "호기심 많은 예술가", color: "#E91E63" },
+  ISFJ: { emoji: "🛡️", title: "용감한 수호자", color: "#1ABC9C" },
+  ISTP: { emoji: "🔧", title: "만능 재주꾼", color: "#607D8B" },
+  ISTJ: { emoji: "📋", title: "청렴결백한 논리주의자", color: "#34495E" },
 };
 
 export const QUICK_TAGS = [
