@@ -102,6 +102,9 @@ export default function useAnalysis() {
         .then((data) => {
           clearInterval(timerRef.current);
 
+          // PAYMENT_REQUIRED로 null이 반환된 경우 — payment stage로 이미 전환됨
+          if (!data) return;
+
           // 모든 로딩 단계를 완료 표시
           setLoadingStep(messages.length);
 
