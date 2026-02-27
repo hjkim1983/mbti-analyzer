@@ -1,4 +1,5 @@
 const STORE_ID = process.env.NEXT_PUBLIC_PORTONE_STORE_ID;
+const CHANNEL_KEY = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY;
 const PRICE = 1900;
 
 /**
@@ -13,6 +14,7 @@ export async function requestPayment(deviceId) {
 
   const response = await PortOne.requestPayment({
     storeId: STORE_ID,
+    channelKey: CHANNEL_KEY,
     paymentId,
     orderName: "카톡 MBTI 분석 1회",
     totalAmount: PRICE,
