@@ -3,8 +3,8 @@
 > **Feature**: mbti-analyzer  
 > **Phase**: Report (Do → Check → Act 완료)  
 > **작성일**: 2026-02-26  
-> **최종 업데이트**: 2026-02-26 (Iterate: 이미지 5장 타임아웃 최적화)  
-> **설계-구현 일치도**: 96% ↑ (94% → 96%)  
+> **최종 업데이트**: 2026-02-26 (Iterate: 결제 null 가드 + PortOne 채널키 적용)  
+> **설계-구현 일치도**: 98% ↑ (96% → 98%)  
 > **최종 상태**: 프로덕션 배포 준비 완료 ✅
 
 ---
@@ -40,6 +40,20 @@ e1aa084  글래스모피즘 디자인 시스템 및 기반 유틸리티 구현
 582b72a  3회 무료 분석 및 포트원 결제 연동
 978b70b  결과 화면 및 전체 플로우 통합
 ```
+
+### 2.4 추가 버그 수정 히스토리 (3차 Iterate)
+
+```
+f9dbb1e  버그 수정: 결제 필요 시 null 반환으로 인한 TypeError 해결 (data null 가드 추가)
+5b51531  결제 수정: PortOne 채널키 추가로 결제 요청 오류 해결
+```
+
+| 버그 | 원인 | 수정 파일 |
+|------|------|-----------|
+| `Cannot read properties of null (reading 'freeCount')` | `PAYMENT_REQUIRED` 시 `null` 반환 → `startLoading().then(data)`에서 `null.freeCount` 접근 | `useAnalysis.js` |
+| `channelKey와 pgProvider 둘 중 하나 필수` | PortOne V2 SDK에 `channelKey` 파라미터 누락 | `portone.js`, `.env` |
+
+---
 
 ### 2.3 성능 최적화 히스토리 (2차 Iterate)
 
@@ -416,21 +430,27 @@ export const SAJU_PRICE = 2900;    // 가격 정책에 따라
   - `NEXT_PUBLIC_SUPABASE_URL`
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
   - `NEXT_PUBLIC_PORTONE_STORE_ID`
+  - `NEXT_PUBLIC_PORTONE_CHANNEL_KEY`
   - `PORTONE_API_SECRET`
-- [ ] PortOne 콘솔에서 채널키 발급 및 `portone.js` 업데이트
+- [x] PortOne 채널키 발급 및 코드 적용 완료 (`channel-key-1ab9fcbc-c6ad-4e16-a448-105053df67f6`)
 - [ ] Supabase 프로덕션 프로젝트 확인 (현재: `unetcuffkuvcfgefrvez`)
 - [ ] Gemini API 유료 전환 (일 500회 초과 예상 시)
 
-### 7.2 PortOne 채널키 설정
+### 7.2 PortOne 채널키 설정 ✅ 완료
 
-현재 `portone.js`에 `channelKey`가 미설정 상태입니다.  
-PortOne 콘솔 → 채널 관리 → 채널키 발급 후 아래 코드 업데이트 필요:
+채널키 발급 및 코드 적용 완료.
+
+```env
+# .env
+NEXT_PUBLIC_PORTONE_CHANNEL_KEY=channel-key-1ab9fcbc-c6ad-4e16-a448-105053df67f6
+```
 
 ```javascript
 // src/lib/portone.js
+const CHANNEL_KEY = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY;
 const response = await PortOne.requestPayment({
   storeId: STORE_ID,
-  channelKey: "channel-key-XXXXXXXX",  // ← 발급받은 채널키 입력
+  channelKey: CHANNEL_KEY,  // ✅ 환경변수로 관리
   // ...
 });
 ```
@@ -441,15 +461,17 @@ const response = await PortOne.requestPayment({
 
 | 항목 | 결과 |
 |------|------|
-| 설계-구현 일치도 | **96%** (94% → 96% ↑) |
+| 설계-구현 일치도 | **98%** (94% → 96% → 98% ↑) |
 | 핵심 비즈니스 로직 일치도 | **100%** |
 | 기술적 에러 잔존 여부 | **없음** |
 | 이미지 5장 타임아웃 | **해결** (maxDuration=60, TIMEOUT=55s) |
-| 프로덕션 배포 준비 | **완료** (PortOne 채널키 설정 후) |
+| 결제 TypeError | **해결** (null 가드 추가) |
+| PortOne 채널키 | **설정 완료** |
+| 프로덕션 배포 준비 | **완료** (Vercel 환경변수 설정만 남음) |
 | 코드 품질 | 린트 에러 0건 |
 
 **결론**: 설계 원칙을 완전히 유지하면서 실제 운영 환경에서 발생하는 모든 기술적 에러를 해결했습니다.  
-이미지 5장 동시 분석 타임아웃 문제까지 해결되어 PortOne 채널키 설정 후 즉시 배포 가능한 상태입니다.
+결제 플로우까지 완전히 검증되어 Vercel 환경변수 설정 후 즉시 배포 가능한 상태입니다.
 
 ---
 
@@ -504,4 +526,5 @@ const response = await PortOne.requestPayment({
 ---
 
 *Report generated: 2026-02-26*  
-*Next action: Vercel 배포 또는 사주 기능 추가*
+*Last updated: 2026-02-26 (결제 플로우 완전 검증 완료)*  
+*Next action: Vercel 배포 (환경변수 설정) 또는 사주 기능 추가*

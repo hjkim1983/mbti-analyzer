@@ -4,7 +4,7 @@
 > **Phase**: Design
 > **Created**: 2026-02-26
 > **Plan Reference**: `docs/01-plan/features/mbti-analyzer.plan.md`
-> **Status**: Draft
+> **Status**: ✅ Confirmed (최종 구현 기준으로 업데이트 완료 — 2026-02-26)
 
 ---
 
@@ -106,32 +106,36 @@
 ### 2.1 컴포넌트 트리
 
 ```
-app/layout.js
-└── app/page.js (메인 페이지 — Client Component)
-    ├── Header
-    ├── [stage === "main"]
-    │   ├── HeroSection
-    │   ├── UploadCard
-    │   │   ├── NameInput (인라인)
-    │   │   ├── DropZone (인라인)
-    │   │   └── StatusBanner (인라인)
-    │   ├── MemoCard
-    │   │   ├── QuickTags (인라인)
-    │   │   └── TextArea (인라인)
-    │   ├── FreeCountBadge
-    │   └── AnalyzeButton
-    ├── [stage === "payment"]
-    │   └── PaymentModal
-    ├── [stage === "loading"]
-    │   └── LoadingScreen
-    └── [stage === "result"]
-        └── ResultScreen
-            ├── MbtiCard
-            ├── IndicatorDetail
-            ├── ChatPatterns
-            ├── ProfileAnalysis (isMulti일 때)
-            └── Disclaimer
+app/layout.js                          # suppressHydrationWarning 적용
+└── app/page.js ("use client")         # ✅ 변경: next/dynamic(ssr:false) 진입점
+    └── HomeContent (dynamic, ssr:false) # ✅ 추가: isMounted 가드 포함
+        ├── Header
+        ├── [stage === "main"]
+        │   ├── HeroSection
+        │   ├── UploadCard
+        │   │   ├── NameInput (인라인)
+        │   │   ├── DropZone (인라인)
+        │   │   └── StatusBanner (인라인)
+        │   ├── MemoCard
+        │   │   ├── QuickTags (인라인)
+        │   │   └── TextArea (인라인)
+        │   ├── FreeCountBadge
+        │   └── AnalyzeButton
+        ├── [stage === "payment"]
+        │   └── PaymentModal
+        ├── [stage === "loading"]
+        │   └── LoadingScreen
+        └── [stage === "result"]
+            └── ResultScreen
+                ├── MbtiCard
+                ├── IndicatorDetail
+                ├── ChatPatterns
+                ├── ProfileAnalysis (isMulti일 때)
+                └── Disclaimer
 ```
+
+> **✅ 설계 변경 이유**: 브라우저 확장 프로그램(Endic 등)이 React hydration 이전에 DOM을 수정하여  
+> 발생하는 Hydration 에러를 완전히 차단하기 위해 `next/dynamic(ssr:false)` + `isMounted` 이중 가드 적용.
 
 ### 2.2 상태 관리 (useAnalysis 훅)
 
@@ -270,9 +274,13 @@ app/layout.js
 //
 // 기능:
 //   - 단계별 프로그레스 표시 (pulse-ring + float 애니메이션)
-//   - 입력 유형별 동적 로딩 메시지 (이미지 only / 메모 only / 종합)
+//   - ✅ 변경: imageCount 기반 동적 로딩 메시지
+//     · isMulti: "캡처 이미지 N장 분석 중..." → 전체 맥락 → 말투 분석 → ...
+//     · hasMemo only: 말투 → 입력 정보 → MBTI 대조 → 완료
+//     · 단일 이미지: 말투 → 이모티콘 → MBTI 대조 → 완료
 //   - 각 단계 완료 체크마크 전환
 //   - 프로그레스 도트 인디케이터
+//   - ✅ 추가: 인터벌 동적 조정 (5장: 3000ms/단계)
 ```
 
 #### ResultScreen
@@ -390,6 +398,9 @@ interface IndicatorResult {
 
 // 403 — 결제 검증 실패
 { success: false, error: "PAYMENT_INVALID", message: "결제 검증에 실패했습니다" }
+
+// 429 — AI 할당량 초과 ✅ 추가
+{ success: false, error: "QUOTA_EXCEEDED", message: "AI 서버 요청 한도를 초과했습니다. 1분 후 다시 시도해주세요." }
 
 // 500 — AI 분석 실패
 { success: false, error: "ANALYSIS_FAILED", message: "AI 분석 중 오류가 발생했습니다" }
@@ -563,15 +574,17 @@ function buildUserPrompt({ targetName, memo, images }) {
 ```javascript
 // src/lib/gemini.js — callGemini()
 
-const MODEL = "gemini-2.0-flash";
+// ✅ 변경: gemini-2.0-flash → gemini-2.5-flash (무료 할당량 초과 해결)
+const MODEL = "gemini-2.5-flash";
 const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
 const generationConfig = {
-  temperature: 0.3,        // 일관성을 위해 낮은 온도
+  temperature: 0.3,
   topP: 0.8,
   topK: 40,
-  maxOutputTokens: 4096,
-  responseMimeType: "application/json"  // JSON 모드 강제
+  maxOutputTokens: 8192,              // ✅ 변경: 4096 → 8192 (JSON 잘림 방지)
+  responseMimeType: "application/json",
+  candidateCount: 1,                  // ✅ 추가: 불필요한 후보 생성 제거
 };
 
 const safetySettings = [
@@ -581,8 +594,27 @@ const safetySettings = [
   { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
 ];
 
-// 타임아웃: 15초
-const TIMEOUT_MS = 15000;
+// ✅ 변경: 15000 → 55000 (이미지 5장 처리 대응, Vercel maxDuration=60과 맞춤)
+const TIMEOUT_MS = 55000;
+```
+
+**에러 처리 추가 (할당량 초과)**:
+```javascript
+if (res.status === 429 || errText.includes("RESOURCE_EXHAUSTED")) {
+  throw new Error("QUOTA_EXCEEDED");
+}
+// route.js에서 429 상태로 변환하여 클라이언트에 전달
+```
+
+**JSON 파싱 폴백 로직**:
+```javascript
+try {
+  return JSON.parse(text);
+} catch {
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (jsonMatch) return JSON.parse(jsonMatch[0]);
+  // 잘린 JSON 복구 시도 (닫는 괄호 추가) 후 실패 시 에러
+}
 ```
 
 ### 4.4 AI 응답 → MBTI 데이터 매핑
@@ -642,16 +674,15 @@ const MBTI_META = {
 ```javascript
 const paymentRequest = {
   storeId: process.env.NEXT_PUBLIC_PORTONE_STORE_ID,
-  channelKey: "channel-key-...",   // 포트원 콘솔에서 발급
-  paymentId: `mbti-${deviceId}-${Date.now()}`,
+  channelKey: process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY,  // ✅ 환경변수로 관리
+  paymentId: `mbti-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
   orderName: "카톡 MBTI 분석 1회",
   totalAmount: 1900,
-  currency: "KRW",
+  currency: "CURRENCY_KRW",   // ✅ 변경: PortOne V2 enum 형식
   payMethod: "CARD",
   customer: {
     customerId: deviceId,
   },
-  redirectUrl: `${window.location.origin}/payment/complete`,
 };
 ```
 
@@ -702,18 +733,25 @@ function generateFingerprint(): string
 
 ```javascript
 /**
- * File → Base64 변환 (리사이즈 포함)
- * 
- * 1. FileReader로 읽기
- * 2. Canvas에 그리기 (max 1024px 리사이즈)
- * 3. JPEG 80% 품질로 압축
- * 4. Base64 문자열 반환
+ * ✅ 변경: 장수별 압축 프리셋 추가 (5장 동시 전송 시 총 페이로드 ~4MB 이하 유지)
  *
- * @param {File} file - 이미지 파일
- * @param {number} maxSize - 최대 픽셀 (기본 1024)
- * @returns {Promise<{base64: string, mimeType: string}>}
+ * | 장수 | 최대 해상도 | JPEG 품질 |
+ * |------|-----------|---------|
+ * |  1장 | 1024px    | 82%     |
+ * |  2장 |  900px    | 78%     |
+ * |  3장 |  800px    | 72%     |
+ * |  4장 |  720px    | 68%     |
+ * |  5장 |  640px    | 62%     |
  */
-export async function fileToBase64(file, maxSize = 1024): Promise<ImageData>
+
+/**
+ * File → Base64 변환 (장수에 따른 자동 압축 강도 조정)
+ *
+ * @param {File}   file        - 이미지 파일
+ * @param {number} totalImages - 함께 전송할 이미지 총 장수 (압축 강도 결정)
+ * @returns {Promise<{base64: string, base64Data: string, mimeType: string}>}
+ */
+export async function fileToBase64(file, totalImages = 1): Promise<ImageData>
 
 /**
  * Base64 문자열에서 data URI 접두사 제거
@@ -891,35 +929,34 @@ body {
 ```javascript
 // useAnalysis 훅 내부 에러 핸들링
 
-try {
-  const response = await fetch("/api/analyze", { ... });
-  const data = await response.json();
-
-  if (!response.ok) {
-    switch (data.error) {
-      case "PAYMENT_REQUIRED":
-        setStage("payment");
-        break;
-      case "PAYMENT_INVALID":
-        setError("결제 검증에 실패했어요. 다시 시도해주세요.");
-        setStage("main");
-        break;
-      case "ANALYSIS_TIMEOUT":
-        setError("분석 시간이 초과되었어요. 다시 시도해주세요.");
-        setStage("main");
-        break;
-      default:
-        setError("오류가 발생했어요. 잠시 후 다시 시도해주세요.");
-        setStage("main");
-    }
-    return;
+// ✅ 추가: PAYMENT_REQUIRED 시 null 반환 → startLoading().then(data)에서 null 가드 필수
+apiPromise.catch((err) => {
+  if (err.message === "PAYMENT_REQUIRED") {
+    clearInterval(timerRef.current);
+    setStage("payment");
+    return null;  // startLoading의 .then(data)로 null 전달
   }
+  throw err;
+});
 
-  setResult(data.data);
-  setStage("result");
-} catch (err) {
-  setError("네트워크 오류가 발생했어요.");
-  setStage("main");
+// startLoading 내부 — null 가드
+.then((data) => {
+  clearInterval(timerRef.current);
+  if (!data) return;  // ✅ 필수: PAYMENT_REQUIRED로 null이 반환된 경우 조기 종료
+  setLoadingStep(messages.length);
+  setTimeout(() => {
+    setResult(data);
+    if (data.freeCount) setFreeCount(data.freeCount);
+    setStage("result");
+  }, 600);
+})
+
+// 에러 코드별 처리
+switch (data.error) {
+  case "PAYMENT_REQUIRED":  setStage("payment"); break;
+  case "QUOTA_EXCEEDED":    setError("AI 서버 요청 한도 초과. 1분 후 재시도"); break;  // ✅ 추가
+  case "ANALYSIS_TIMEOUT":  setError("분석 시간 초과. 다시 시도해주세요."); break;
+  default:                  setError("오류가 발생했어요. 잠시 후 다시 시도해주세요.");
 }
 ```
 
@@ -928,9 +965,12 @@ try {
 ```javascript
 // /api/analyze/route.js
 
+// ✅ 추가: Vercel 함수 실행 시간 제한 확장
+export const maxDuration = 60;  // Hobby: 최대 60초
+
 // Gemini API 호출 시 AbortController로 타임아웃 관리
 const controller = new AbortController();
-const timeout = setTimeout(() => controller.abort(), 15000);
+const timeout = setTimeout(() => controller.abort(), 55000);  // ✅ 변경: 15000 → 55000
 
 try {
   const geminiResponse = await fetch(API_ENDPOINT, {
@@ -961,17 +1001,20 @@ try {
 
 ```env
 # ─── 클라이언트 공개 (NEXT_PUBLIC_ 접두사) ───
-NEXT_PUBLIC_GEMINI_API_KEY=       # Gemini API 키 (서버에서만 실제 사용)
-NEXT_PUBLIC_SUPABASE_URL=         # Supabase 프로젝트 URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY=    # Supabase 익명 키
-NEXT_PUBLIC_PORTONE_STORE_ID=     # 포트원 상점 ID
+NEXT_PUBLIC_SUPABASE_URL=              # Supabase 프로젝트 URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY=         # Supabase 익명 키
+NEXT_PUBLIC_PORTONE_STORE_ID=          # 포트원 상점 ID
+NEXT_PUBLIC_PORTONE_CHANNEL_KEY=       # ✅ 추가: 포트원 채널키 (결제 요청 시 필수)
 
-# ─── 서버 전용 ───
-PORTONE_API_SECRET=               # 포트원 API 시크릿 (결제 검증용)
-GEMINI_API_KEY=                   # Gemini API 키 (서버 전용 — 보안 강화)
+# ─── 서버 전용 (브라우저 노출 금지) ───
+GEMINI_API_KEY=                        # ✅ 확정: Gemini API 키 (서버 전용)
+PORTONE_API_SECRET=                    # 포트원 API 시크릿 (결제 검증용)
 ```
 
-> **보안 참고**: `NEXT_PUBLIC_GEMINI_API_KEY`는 현재 `.env`에 존재하지만, 실제 Gemini API 호출은 서버 사이드(`/api/analyze`)에서만 수행합니다. 클라이언트로 노출되지 않도록 `GEMINI_API_KEY`(접두사 없음)를 별도 추가하여 서버에서만 사용하는 것을 권장합니다.
+> **보안 원칙**:
+> - `GEMINI_API_KEY`는 `NEXT_PUBLIC_` 접두사 없이 서버 전용으로 사용 (브라우저 노출 방지)
+> - `NEXT_PUBLIC_PORTONE_CHANNEL_KEY`는 클라이언트 SDK 호출에 필요하므로 공개 허용
+> - `PORTONE_API_SECRET`은 서버 사이드 결제 검증에만 사용
 
 ---
 
