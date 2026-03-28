@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS analyses (
   image_count INTEGER DEFAULT 0,
   is_paid BOOLEAN DEFAULT false,
   payment_id TEXT,
+  analysis_mode VARCHAR(10) DEFAULT 'simple',
   created_at TIMESTAMPTZ DEFAULT now()
 );
 

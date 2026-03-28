@@ -1,6 +1,7 @@
 import { supabase } from "./supabase";
+import { FREE_LIMIT } from "./analysis-tier";
 
-export const FREE_LIMIT = 3;
+export { FREE_LIMIT };
 export const PRICE_PER_ANALYSIS = 1900;
 
 /**
@@ -74,6 +75,7 @@ export async function saveAnalysis({
   imageCount,
   isPaid,
   paymentId,
+  analysisMode = "simple",
 }) {
   const { data, error } = await supabase
     .from("analyses")
@@ -88,6 +90,7 @@ export async function saveAnalysis({
       image_count: imageCount,
       is_paid: isPaid,
       payment_id: paymentId || null,
+      analysis_mode: analysisMode,
     })
     .select("id")
     .single();

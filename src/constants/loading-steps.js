@@ -1,4 +1,19 @@
-export function getLoadingSteps(isMulti, hasMemo, imageCount = 1) {
+import { ANALYSIS_MODE } from "@/lib/analysis-tier";
+
+/**
+ * @param {boolean} isMulti
+ * @param {boolean} hasMemo
+ * @param {number} imageCount
+ * @param {string} [mode] ANALYSIS_MODE.SIMPLE | DEEP
+ */
+export function getLoadingSteps(
+  isMulti,
+  hasMemo,
+  imageCount = 1,
+  mode = ANALYSIS_MODE.SIMPLE,
+) {
+  const deep = mode === ANALYSIS_MODE.DEEP;
+
   if (isMulti) {
     return {
       steps: [
@@ -7,7 +22,8 @@ export function getLoadingSteps(isMulti, hasMemo, imageCount = 1) {
         "말투 & 어조 패턴 분석",
         "프로필 분위기 스캔",
         hasMemo ? "추가 정보 종합 분석" : "이모티콘 & 반응 패턴 분석",
-        "MBTI 데이터와 대조",
+        deep ? "심층 근거 정리" : "MBTI 데이터와 대조",
+        "결과 정리",
       ],
       messages: [
         `캡처 이미지 ${imageCount}장 분석 중...`,
@@ -15,10 +31,10 @@ export function getLoadingSteps(isMulti, hasMemo, imageCount = 1) {
         "카카오톡 말투 패턴 파악 중...",
         "프로필 분위기 & 상태 메시지 스캔 중...",
         hasMemo ? "추가 정보 종합 중..." : "이모티콘 사용 빈도 계산 중...",
-        "MBTI 데이터와 대조 중...",
+        deep ? "심층 분석 근거 정리 중..." : "MBTI 데이터와 대조 중...",
         "분석 완료! 결과를 정리하고 있어요...",
       ],
-      icons: ["📸", "🔮", "💬", "📸", hasMemo ? "✏️" : "😄", "🧠"],
+      icons: ["📸", "🔮", "💬", "📸", hasMemo ? "✏️" : "😄", deep ? "✨" : "🧠", "📋"],
     };
   }
 
@@ -27,16 +43,16 @@ export function getLoadingSteps(isMulti, hasMemo, imageCount = 1) {
       steps: [
         "말투 & 어조 패턴 분석",
         "추가 입력 정보 분석",
-        "MBTI 데이터와 대조",
+        deep ? "심층 해석" : "MBTI 데이터와 대조",
         "분석 결과 정리",
       ],
       messages: [
         "말투 패턴 분석 중...",
         "입력하신 정보 분석 중...",
-        "MBTI 데이터와 대조 중...",
+        deep ? "심층 해석 중..." : "MBTI 데이터와 대조 중...",
         "분석 완료! 결과를 정리하고 있어요...",
       ],
-      icons: ["💬", "✏️", "🧠", "📋"],
+      icons: ["💬", "✏️", deep ? "✨" : "🧠", "📋"],
     };
   }
 
@@ -45,14 +61,14 @@ export function getLoadingSteps(isMulti, hasMemo, imageCount = 1) {
       "말투 & 어조 패턴 분석",
       "이모티콘 사용 빈도 계산",
       "문장 길이 & 구조 파악",
-      "MBTI 데이터와 대조",
+      deep ? "심층 근거 정리" : "MBTI 데이터와 대조",
     ],
     messages: [
       "카카오톡 말투 패턴 분석 중...",
       "이모티콘 빈도 계산 중...",
-      "MBTI 데이터와 대조 중...",
+      deep ? "문장 구조 심층 분석 중..." : "MBTI 데이터와 대조 중...",
       "분석 완료! 결과를 정리하고 있어요...",
     ],
-    icons: ["💬", "😄", "📝", "🧠"],
+    icons: ["💬", "😄", "📝", deep ? "✨" : "🧠"],
   };
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import GlassCard from "./GlassCard";
+import { ANALYSIS_MODE } from "@/lib/analysis-tier";
 
 export default function ResultScreen({
   result,
@@ -9,6 +10,8 @@ export default function ResultScreen({
   isMulti,
   hasMemo,
   onReset,
+  analysisMode = ANALYSIS_MODE.SIMPLE,
+  onGoDeep,
 }) {
   if (!result) return null;
 
@@ -27,23 +30,41 @@ export default function ResultScreen({
     profile,
   } = result;
 
+  const isDeep = analysisMode === ANALYSIS_MODE.DEEP;
+
   return (
     <div className="pt-6">
-      {/* 분석 모드 뱃지 */}
+      {/* 분석 티어 뱃지 */}
+      <div className="text-center mb-4 anim-slide-up">
+        <span
+          className="text-xs font-bold px-4 py-1.5 rounded-full shadow-sm"
+          style={{
+            background: isDeep
+              ? "linear-gradient(90deg,rgba(162,155,254,0.5),rgba(124,58,237,0.25))"
+              : "linear-gradient(90deg,rgba(254,229,0,0.8),rgba(162,155,254,0.3))",
+            color: "#333",
+          }}
+        >
+          {isDeep
+            ? "✨ 유료 · 심층 분석 결과"
+            : "🎁 무료 · 간단 추측 결과"}
+        </span>
+      </div>
+
       {(isMulti || hasMemo) && (
         <div className="text-center mb-4 anim-slide-up">
           <span
-            className="text-xs font-bold px-4 py-1.5 rounded-full shadow-sm"
+            className="text-xs font-bold px-4 py-1.5 rounded-full shadow-sm inline-block"
             style={{
-              background: "linear-gradient(90deg,rgba(254,229,0,0.8),rgba(162,155,254,0.3))",
-              color: "#333",
+              background: "rgba(255,255,255,0.6)",
+              color: "#555",
             }}
           >
             {isMulti && hasMemo
-              ? "✨ 대화 + 프로필 + 추가정보 종합 분석"
+              ? "대화 + 프로필 + 추가정보 반영"
               : isMulti
-                ? "✨ 대화 + 프로필 종합 분석 결과"
-                : "✨ 추가 정보 반영 분석 결과"}
+                ? "대화 + 프로필 종합"
+                : "추가 정보 반영"}
           </span>
         </div>
       )}
@@ -327,6 +348,26 @@ export default function ResultScreen({
           성격은 하나의 도구로 단정지을 수 없답니다.
         </p>
       </div>
+
+      {/* 간단 결과 → 심층 유도 */}
+      {!isDeep && typeof onGoDeep === "function" && (
+        <div className="mb-4 anim-slide-up delay-5">
+          <button
+            type="button"
+            onClick={onGoDeep}
+            className="w-full py-4 rounded-2xl font-extrabold text-sm text-gray-900 shadow-lg active:scale-[0.99] transition-transform border-2 border-purple-200"
+            style={{
+              background:
+                "linear-gradient(135deg, rgba(162,155,254,0.35), rgba(167,139,250,0.2))",
+            }}
+          >
+            💎 심층 분석으로 이어가기 (최대 10장 + 텍스트)
+          </button>
+          <p className="text-[11px] text-center text-gray-400 mt-2">
+            유료 탭으로 이동해 말투·행동을 입력하면 더 구체적인 결과를 받을 수 있어요
+          </p>
+        </div>
+      )}
 
       {/* 액션 버튼 */}
       <div className="flex gap-3 anim-slide-up delay-6">

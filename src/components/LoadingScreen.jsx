@@ -1,14 +1,21 @@
 "use client";
 
 import { getLoadingSteps } from "@/constants/loading-steps";
+import { ANALYSIS_MODE } from "@/lib/analysis-tier";
 
 export default function LoadingScreen({
   loadingStep,
   isMulti,
   hasMemo,
   imageCount,
+  mode = ANALYSIS_MODE.SIMPLE,
 }) {
-  const { steps, messages, icons } = getLoadingSteps(isMulti, hasMemo, imageCount);
+  const { steps, messages, icons } = getLoadingSteps(
+    isMulti,
+    hasMemo,
+    imageCount,
+    mode,
+  );
 
   return (
     <div className="pt-14 flex flex-col items-center text-center anim-slide-up">

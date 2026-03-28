@@ -9,6 +9,8 @@ export default function UploadCard({
   onAddImages,
   onRemoveImage,
   onTargetNameChange,
+  maxImages = 5,
+  tierHint = "",
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const fileRef = useRef(null);
@@ -26,7 +28,8 @@ export default function UploadCard({
         <div>
           <h2 className="font-extrabold text-gray-900 text-sm">캡처 업로드</h2>
           <p className="text-xs text-gray-400 mt-0.5">
-            최대 5장까지 한번에 올릴 수 있어요
+            최대 {maxImages}장까지 올릴 수 있어요
+            {tierHint ? ` · ${tierHint}` : ""}
           </p>
         </div>
         {images.length > 0 && (
@@ -85,7 +88,7 @@ export default function UploadCard({
           setIsDragging(true);
         }}
         onDragLeave={() => setIsDragging(false)}
-        onClick={() => images.length < 5 && fileRef.current?.click()}
+        onClick={() => images.length < maxImages && fileRef.current?.click()}
         className="rounded-2xl border-2 border-dashed transition-all duration-200 cursor-pointer mb-3"
         style={{
           borderColor: isDragging
@@ -171,7 +174,7 @@ export default function UploadCard({
                   </button>
                 </div>
               ))}
-              {images.length < 5 && (
+              {images.length < maxImages && (
                 <div
                   className="rounded-xl border-2 border-dashed border-white/40 flex flex-col items-center justify-center gap-1 text-gray-300"
                   style={{ aspectRatio: "1" }}

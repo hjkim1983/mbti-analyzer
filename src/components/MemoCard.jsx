@@ -2,27 +2,44 @@
 
 import GlassCard from "./GlassCard";
 import { QUICK_TAGS } from "@/constants/mbti-data";
+import { MEMO_MIN_DEEP } from "@/lib/analysis-tier";
 
-export default function MemoCard({ memo, onMemoChange, onToggleTag }) {
+export default function MemoCard({
+  memo,
+  onMemoChange,
+  onToggleTag,
+  isDeep = false,
+}) {
   const hasMemo = memo.trim().length > 0;
+  const meetsMin = memo.trim().length >= MEMO_MIN_DEEP;
 
   return (
     <GlassCard animate delay={3} className="mb-4">
       <div className="flex items-center justify-between mb-3">
         <div>
           <h2 className="font-extrabold text-gray-900 text-sm flex items-center gap-2">
-            ✏️ 추가 정보 입력
+            ✏️ 말투·행동·특징
             <span className="text-xs font-normal text-gray-400 bg-white/50 px-2 py-0.5 rounded-full">
-              선택사항
+              {isDeep ? `심층 · ${MEMO_MIN_DEEP}자 이상` : "선택사항"}
             </span>
           </h2>
           <p className="text-xs text-gray-400 mt-0.5">
-            입력할수록 분석 정확도가 높아져요
+            {isDeep
+              ? "평소 말투, 행동, 성격 특징을 적어주세요. 심층 분석에 반영돼요"
+              : "입력할수록 분석 정확도가 높아져요"}
           </p>
         </div>
         {hasMemo && (
-          <span className="text-xs font-bold px-2.5 py-1 rounded-full text-green-700 bg-green-50">
-            ✓ 입력됨
+          <span
+            className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+              isDeep && !meetsMin
+                ? "text-amber-800 bg-amber-50"
+                : "text-green-700 bg-green-50"
+            }`}
+          >
+            {isDeep && !meetsMin
+              ? `${memo.trim().length}/${MEMO_MIN_DEEP}자`
+              : "✓ 입력됨"}
           </span>
         )}
       </div>
@@ -56,7 +73,11 @@ export default function MemoCard({ memo, onMemoChange, onToggleTag }) {
       <textarea
         value={memo}
         onChange={(e) => onMemoChange(e.target.value.slice(0, 300))}
-        placeholder="예) 평소에 말이 많고 리액션이 과한 편이에요. 감정 표현도 잘 하고 유머 감각이 있어요."
+        placeholder={
+          isDeep
+            ? `예) 말이 빠르고 이모티콘을 자주 씀. 논쟁할 때 감정보다는 논리를 먼저 꺼냄. (${MEMO_MIN_DEEP}자 이상)`
+            : "예) 평소에 말이 많고 리액션이 과한 편이에요. 감정 표현도 잘 하고 유머 감각이 있어요."
+        }
         rows={4}
         className="w-full text-sm text-gray-700 rounded-2xl p-3.5 resize-none bg-white/60"
         style={{

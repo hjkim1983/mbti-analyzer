@@ -7,30 +7,23 @@ import {
   FREE_LIMIT,
 } from "@/lib/analysis-count";
 import { getMbtiMeta } from "@/constants/mbti-data";
+import {
+  ANALYSIS_MODE,
+  validateAnalysisRequest,
+  requiresPayment,
+} from "@/lib/analysis-tier";
 
-// Vercel Hobby: 최대 60초 / Pro: 최대 300초
-// 이미지 5장 분석 시 Gemini 처리 시간 확보
+// Vercel Hobby: 최대 60초 — 심층(최대 10장) 처리 시간 확보
 export const maxDuration = 60;
 
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { deviceId, targetName, memo, images, paymentId } = body;
+    const { deviceId, targetName, memo, images, paymentId, mode: rawMode } =
+      body;
 
-    // 1. 입력 검증
-    const hasImages = images && images.length > 0;
-    const hasMemo = memo && memo.trim().length > 0;
-
-    if (!hasImages && !hasMemo) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "INVALID_INPUT",
-          message: "이미지 또는 메모가 필요합니다",
-        },
-        { status: 400 },
-      );
-    }
+    const mode =
+      rawMode === ANALYSIS_MODE.DEEP ? ANALYSIS_MODE.DEEP : ANALYSIS_MODE.SIMPLE;
 
     if (!deviceId) {
       return NextResponse.json(
@@ -43,30 +36,64 @@ export async function POST(request) {
       );
     }
 
-    // 2. 분석 횟수 확인
     const { profileId, count } = await getAnalysisCount(deviceId);
-    const isPaid = count >= FREE_LIMIT;
 
-    // 3. 유료 분석 시 결제 확인
-    if (isPaid && !paymentId) {
+    const tierCheck = validateAnalysisRequest({
+      mode,
+      images: images || [],
+      memo,
+    });
+    if (!tierCheck.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: tierCheck.error,
+          message: tierCheck.message,
+          ...(tierCheck.freeCount ? { freeCount: tierCheck.freeCount } : {}),
+        },
+        { status: tierCheck.status },
+      );
+    }
+
+    const hasImages = images && images.length > 0;
+    const memoTrim = mode === ANALYSIS_MODE.SIMPLE ? "" : (memo || "").trim();
+
+    if (!hasImages && mode === ANALYSIS_MODE.SIMPLE) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "INVALID_INPUT",
+          message: "캡처 이미지가 필요합니다",
+        },
+        { status: 400 },
+      );
+    }
+
+    const needPay = requiresPayment(mode, count);
+    if (needPay && !paymentId) {
       return NextResponse.json(
         {
           success: false,
           error: "PAYMENT_REQUIRED",
-          message: "무료 분석 횟수를 초과했습니다",
-          freeCount: { used: count, remaining: 0 },
+          message:
+            mode === ANALYSIS_MODE.DEEP
+              ? "심층 분석은 결제 후 이용할 수 있어요"
+              : "무료 간단 분석 횟수를 초과했습니다",
+          freeCount: { used: count, remaining: Math.max(0, FREE_LIMIT - count) },
         },
         { status: 402 },
       );
     }
 
-    // 4. Gemini AI 분석
+    const isPaid = needPay;
+
     let result;
     try {
       result = await callGemini({
         targetName: targetName || "미지정",
-        memo: memo || "",
+        memo: memoTrim,
         images: images || [],
+        mode,
       });
     } catch (err) {
       if (err.message === "ANALYSIS_TIMEOUT") {
@@ -101,22 +128,20 @@ export async function POST(request) {
       );
     }
 
-    // 5. 결과 DB 저장
     const analysisId = await saveAnalysis({
       profileId,
       targetName: targetName || "미지정",
       result,
-      memo,
+      memo: memoTrim || null,
       imageCount: images?.length || 0,
       isPaid,
       paymentId,
+      analysisMode: mode,
     });
 
-    // 6. 횟수 증가
     await incrementAnalysisCount(profileId);
     const newCount = count + 1;
 
-    // 7. MBTI 메타 정보 병합
     const meta = getMbtiMeta(result.mbtiType);
 
     return NextResponse.json({
@@ -127,6 +152,7 @@ export async function POST(request) {
         emoji: meta.emoji,
         title: meta.title,
         color: meta.color,
+        analysisMode: mode,
       },
       freeCount: {
         used: newCount,

@@ -1,5 +1,6 @@
 import { readFileSync } from "fs";
 import { join } from "path";
+import { ANALYSIS_MODE } from "./analysis-tier";
 
 const MODEL = "gemini-2.5-flash";
 const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
@@ -21,26 +22,43 @@ function getSkillPrompt() {
   return cachedSkillPrompt;
 }
 
-function buildSystemPrompt() {
+function buildSystemPrompt(mode = ANALYSIS_MODE.SIMPLE) {
   const skill = getSkillPrompt();
-  return `당신은 세 가지 입력 데이터를 통합 분석하여 MBTI를 추론하는 전문 심리언어학 분석 에이전트입니다.
+  const tierHint =
+    mode === ANALYSIS_MODE.DEEP
+      ? `## 분석 깊이 (심층 모드)
+이번 요청은 **유료 심층 분석**입니다. 이미지와 관찰자가 입력한 텍스트(말투·행동·특징)를 모두 반영하여 **구체적으로** 추론하세요.
+지표별 evidence는 각각 **3개 이상**, highlights·traits는 풍부하게 작성하세요.`
+      : `## 분석 깊이 (간단 모드)
+이번 요청은 **무료 간단 추측**입니다. 캡처만으로 빠르게 방향을 제시하세요.
+지표별 evidence는 **각 2개 이상**이면 되며, 확신도는 입력이 제한적이므로 **보통 MEDIUM 또는 LOW**를 우선 고려하세요.`;
+
+  return `당신은 입력 데이터를 통합 분석하여 MBTI를 추론하는 전문 심리언어학 분석 에이전트입니다.
 
 ${skill}
+
+${tierHint}
 
 ## 출력 규칙
 1. 반드시 아래 JSON 스키마에 맞춰 응답하세요.
 2. JSON 외의 텍스트를 포함하지 마세요.
-3. evidence 배열에는 한국어로 구체적 근거를 3개 이상 작성하세요.
+3. evidence는 한국어로 구체적 근거를 작성하세요 (간단 모드: 지표당 2개+, 심층 모드: 지표당 3개+).
 4. conflicts 배열에는 지표 간 충돌이 있을 경우 설명을 포함하세요.
 5. 확신도(confidence)는 신뢰도 등급 기준을 따르세요.`;
 }
 
-function buildUserParts({ targetName, memo, images }) {
+function buildUserParts({ targetName, memo, images, mode = ANALYSIS_MODE.SIMPLE }) {
   const parts = [];
+
+  const modeLine =
+    mode === ANALYSIS_MODE.DEEP
+      ? "심층 모드: 이미지와 관찰 텍스트를 모두 반영해 구체적으로 분석합니다."
+      : "간단 모드: 캡처만으로 빠른 MBTI 방향 추측을 제공합니다.";
 
   parts.push({
     text:
       `## 분석 대상\n이름: ${targetName || "미지정"}\n\n` +
+      `${modeLine}\n\n` +
       `이 사람의 MBTI를 아래 입력 데이터를 기반으로 분석해주세요.\n` +
       `이미지에서 대화([A])와 프로필([B])을 스스로 분류하여 분석하세요.`,
   });
@@ -104,7 +122,12 @@ function buildUserParts({ targetName, memo, images }) {
   return parts;
 }
 
-export async function callGemini({ targetName, memo, images }) {
+export async function callGemini({
+  targetName,
+  memo,
+  images,
+  mode = ANALYSIS_MODE.SIMPLE,
+}) {
   const apiKey =
     process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
@@ -114,12 +137,12 @@ export async function callGemini({ targetName, memo, images }) {
 
   const body = {
     system_instruction: {
-      parts: [{ text: buildSystemPrompt() }],
+      parts: [{ text: buildSystemPrompt(mode) }],
     },
     contents: [
       {
         role: "user",
-        parts: buildUserParts({ targetName, memo, images }),
+        parts: buildUserParts({ targetName, memo, images, mode }),
       },
     ],
     generationConfig: {

@@ -5,11 +5,18 @@ import { fileToBase64 } from "@/lib/image-utils";
 import { getDeviceId } from "@/lib/device-id";
 import { getLoadingSteps } from "@/constants/loading-steps";
 import { supabase } from "@/lib/supabase";
-
-const FREE_LIMIT = 3;
+import {
+  FREE_LIMIT,
+  MAX_IMAGES_SIMPLE,
+  MAX_IMAGES_DEEP,
+  MEMO_MIN_DEEP,
+  ANALYSIS_MODE,
+} from "@/lib/analysis-tier";
 
 export default function useAnalysis() {
   const [stage, setStage] = useState("main");
+  /** simple | deep — UI 탭 (API mode와 동일) */
+  const [activeTab, setActiveTab] = useState("simple");
   const [images, setImages] = useState([]);
   const [targetName, setTargetName] = useState("");
   const [memo, setMemo] = useState("");
@@ -19,12 +26,16 @@ export default function useAnalysis() {
   const [error, setError] = useState(null);
   const [isChecking, setIsChecking] = useState(false);
   const timerRef = useRef(null);
-  const pendingPaymentId = useRef(null);
 
   const imageCount = images.length;
+  const maxImages = activeTab === "deep" ? MAX_IMAGES_DEEP : MAX_IMAGES_SIMPLE;
   const isMulti = imageCount >= 2;
   const hasMemo = memo.trim().length > 0;
-  const canAnalyze = imageCount > 0 || hasMemo;
+  const isDeepTab = activeTab === "deep";
+
+  const canAnalyze = isDeepTab
+    ? imageCount >= 1 && memo.trim().length >= MEMO_MIN_DEEP
+    : imageCount >= 1 && imageCount <= MAX_IMAGES_SIMPLE;
 
   useEffect(() => {
     (async () => {
@@ -43,23 +54,31 @@ export default function useAnalysis() {
           });
         }
       } catch {
-        // 첫 사용자는 프로필이 없으므로 무시
+        // 첫 사용자
       }
     })();
   }, []);
 
+  /** 간단 탭에서는 추가 텍스트 비사용 */
+  useEffect(() => {
+    if (!isDeepTab) {
+      setMemo("");
+    }
+  }, [isDeepTab]);
+
   const addImages = useCallback(
     (files) => {
+      const cap = activeTab === "deep" ? MAX_IMAGES_DEEP : MAX_IMAGES_SIMPLE;
       const newImgs = Array.from(files)
         .filter((f) => f.type.startsWith("image/"))
-        .slice(0, 5 - images.length)
+        .slice(0, cap - images.length)
         .map((f) => ({
           file: f,
           preview: URL.createObjectURL(f),
         }));
       setImages((prev) => [...prev, ...newImgs]);
     },
-    [images.length],
+    [images.length, activeTab],
   );
 
   const removeImage = useCallback((idx) => {
@@ -68,6 +87,21 @@ export default function useAnalysis() {
       if (removed?.preview) URL.revokeObjectURL(removed.preview);
       return prev.filter((_, i) => i !== idx);
     });
+  }, []);
+
+  /** 탭 전환 시 장 수 상한 맞추기 */
+  const handleTabChange = useCallback((tabId) => {
+    setActiveTab(tabId);
+    if (tabId === "simple") {
+      setImages((prev) => {
+        if (prev.length <= MAX_IMAGES_SIMPLE) return prev;
+        const kept = prev.slice(0, MAX_IMAGES_SIMPLE);
+        prev.slice(MAX_IMAGES_SIMPLE).forEach((img) => {
+          if (img?.preview) URL.revokeObjectURL(img.preview);
+        });
+        return kept;
+      });
+    }
   }, []);
 
   const toggleTag = useCallback((tag) => {
@@ -79,17 +113,20 @@ export default function useAnalysis() {
     });
   }, []);
 
-  // 로딩 애니메이션 시작
   const startLoading = useCallback(
     (apiPromise) => {
       setStage("loading");
       setLoadingStep(0);
 
-      const { messages } = getLoadingSteps(isMulti, hasMemo, imageCount);
-      let step = 0;
+      const mode = isDeepTab ? ANALYSIS_MODE.DEEP : ANALYSIS_MODE.SIMPLE;
+      const { messages } = getLoadingSteps(isMulti, hasMemo, imageCount, mode);
 
-      // 이미지 장수가 많을수록 각 단계 간격을 늘려 체감 대기시간 분산
-      const intervalMs = isMulti ? Math.max(900, imageCount * 600) : 900;
+      let step = 0;
+      const intervalMs = isMulti
+        ? Math.max(900, imageCount * 600)
+        : isDeepTab
+          ? 1000
+          : 900;
 
       timerRef.current = setInterval(() => {
         step++;
@@ -102,10 +139,8 @@ export default function useAnalysis() {
         .then((data) => {
           clearInterval(timerRef.current);
 
-          // PAYMENT_REQUIRED로 null이 반환된 경우 — payment stage로 이미 전환됨
           if (!data) return;
 
-          // 모든 로딩 단계를 완료 표시
           setLoadingStep(messages.length);
 
           setTimeout(() => {
@@ -120,15 +155,16 @@ export default function useAnalysis() {
           setStage("main");
         });
     },
-    [isMulti, hasMemo],
+    [isMulti, hasMemo, imageCount, isDeepTab],
   );
 
-  // API 분석 호출
   const callAnalyzeApi = useCallback(
-    async (paymentId = null) => {
+    async (paymentId, modeOverride) => {
       const deviceId = await getDeviceId();
+      const mode =
+        modeOverride ||
+        (isDeepTab ? ANALYSIS_MODE.DEEP : ANALYSIS_MODE.SIMPLE);
 
-      // 이미지 Base64 변환 (장수에 따라 자동 압축 강도 조정)
       const total = images.length;
       const base64Images = await Promise.all(
         images.map(async (img) => {
@@ -146,9 +182,10 @@ export default function useAnalysis() {
         body: JSON.stringify({
           deviceId,
           targetName: targetName || "미지정",
-          memo,
+          memo: mode === ANALYSIS_MODE.SIMPLE ? "" : memo,
           images: base64Images,
           paymentId,
+          mode,
         }),
       });
 
@@ -164,19 +201,31 @@ export default function useAnalysis() {
 
       return data;
     },
-    [images, targetName, memo],
+    [images, targetName, memo, isDeepTab],
   );
 
-  // 분석 요청 (메인 진입점)
   const requestAnalysis = useCallback(async () => {
     if (!canAnalyze) return;
     setError(null);
+
+    const mode = isDeepTab ? ANALYSIS_MODE.DEEP : ANALYSIS_MODE.SIMPLE;
+
+    if (mode === ANALYSIS_MODE.DEEP) {
+      setStage("payment");
+      return;
+    }
+
+    const used = freeCount?.used ?? 0;
+    if (used >= FREE_LIMIT) {
+      setStage("payment");
+      return;
+    }
+
     setIsChecking(true);
 
     try {
-      const apiPromise = callAnalyzeApi();
+      const apiPromise = callAnalyzeApi(null, ANALYSIS_MODE.SIMPLE);
 
-      // 로딩과 동시에 API 호출
       startLoading(
         apiPromise.catch((err) => {
           if (err.message === "PAYMENT_REQUIRED") {
@@ -193,27 +242,36 @@ export default function useAnalysis() {
     } finally {
       setIsChecking(false);
     }
-  }, [canAnalyze, callAnalyzeApi, startLoading]);
+  }, [canAnalyze, callAnalyzeApi, startLoading, isDeepTab, freeCount]);
 
-  // 결제 완료 후 분석 진행
   const onPaymentComplete = useCallback(
     async (paymentId) => {
       if (!paymentId) return;
 
       setError(null);
-      const apiPromise = callAnalyzeApi(paymentId);
+      const mode = isDeepTab ? ANALYSIS_MODE.DEEP : ANALYSIS_MODE.SIMPLE;
+      const apiPromise = callAnalyzeApi(paymentId, mode);
       startLoading(apiPromise);
     },
-    [callAnalyzeApi, startLoading],
+    [callAnalyzeApi, startLoading, isDeepTab],
   );
 
-  // 결제 취소
   const onPaymentCancel = useCallback(() => {
     setStage("main");
     setError(null);
   }, []);
 
-  // 리셋
+  /** 간단 결과 → 심층 탭으로 (이미지·이름 유지) */
+  const switchToDeepTab = useCallback(() => {
+    clearInterval(timerRef.current);
+    setStage("main");
+    setLoadingStep(0);
+    setResult(null);
+    setError(null);
+    setMemo("");
+    setActiveTab("deep");
+  }, []);
+
   const reset = useCallback(() => {
     clearInterval(timerRef.current);
     setStage("main");
@@ -226,10 +284,13 @@ export default function useAnalysis() {
     setTargetName("");
     setMemo("");
     setError(null);
+    setActiveTab("simple");
   }, [images]);
 
   return {
     stage,
+    activeTab,
+    setActiveTab: handleTabChange,
     images,
     targetName,
     memo,
@@ -239,9 +300,11 @@ export default function useAnalysis() {
     error,
     isChecking,
     imageCount,
+    maxImages,
     isMulti,
     hasMemo,
     canAnalyze,
+    isDeepTab,
 
     addImages,
     removeImage,
@@ -251,6 +314,7 @@ export default function useAnalysis() {
     requestAnalysis,
     onPaymentComplete,
     onPaymentCancel,
+    switchToDeepTab,
     reset,
     setError,
   };

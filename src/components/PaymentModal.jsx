@@ -8,18 +8,23 @@ export default function PaymentModal({
   onConfirm,
   onCancel,
   isProcessing,
+  /** true: 유료 심층 탭에서 연 결제 */
+  isDeepTab = false,
 }) {
   if (!isOpen) return null;
 
+  const title = isDeepTab ? "심층 분석 결제" : "유료 분석 안내";
+  const desc = isDeepTab
+    ? "심층 분석(최대 10장 + 말투·행동 등 텍스트)는 회당 결제 후 진행돼요"
+    : "무료 간단 분석 3회를 모두 사용했어요. 결제 후 간단 분석을 이어갈 수 있어요";
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* 오버레이 */}
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={!isProcessing ? onCancel : undefined}
       />
 
-      {/* 모달 */}
       <div className="glass relative w-full max-w-sm p-6 anim-pop">
         <div className="text-center mb-5">
           <div
@@ -28,12 +33,8 @@ export default function PaymentModal({
           >
             💳
           </div>
-          <h3 className="text-lg font-extrabold text-gray-900 mb-1">
-            유료 분석 안내
-          </h3>
-          <p className="text-sm text-gray-500">
-            무료 분석 3회를 모두 사용했어요
-          </p>
+          <h3 className="text-lg font-extrabold text-gray-900 mb-1">{title}</h3>
+          <p className="text-sm text-gray-500">{desc}</p>
         </div>
 
         <div
@@ -44,7 +45,9 @@ export default function PaymentModal({
           }}
         >
           <div className="flex justify-between items-center mb-2">
-            <span className="text-sm text-gray-600">카톡 MBTI 분석 1회</span>
+            <span className="text-sm text-gray-600">
+              {isDeepTab ? "심층 MBTI 분석 1회" : "간단 MBTI 분석 1회"}
+            </span>
             <span className="text-lg font-extrabold text-gray-900">
               ₩{PRICE.toLocaleString()}
             </span>
@@ -66,7 +69,9 @@ export default function PaymentModal({
               boxShadow: "0 4px 16px rgba(254,229,0,0.4)",
             }}
           >
-            {isProcessing ? "결제 진행 중..." : `₩${PRICE.toLocaleString()} 결제하고 분석하기`}
+            {isProcessing
+              ? "결제 진행 중..."
+              : `₩${PRICE.toLocaleString()} 결제하고 분석하기`}
           </button>
           <button
             onClick={onCancel}
