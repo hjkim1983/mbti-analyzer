@@ -1,4 +1,4 @@
--- 기존 DB에 analysis_mode 컬럼 추가 (Supabase SQL Editor에서 1회 실행)
+-- (선택) analysis_mode만 추가할 때 사용. 전체 스키마는 supabase-schema.sql 통합본을 권장합니다.
 ALTER TABLE analyses
   ADD COLUMN IF NOT EXISTS analysis_mode VARCHAR(10) DEFAULT 'simple';
 
