@@ -3,7 +3,8 @@
  * — 클라이언트·API 라우트에서 공통 사용
  */
 
-export const FREE_LIMIT = 3;
+/** 디바이스당 무료 간단 분석 횟수 */
+export const FREE_LIMIT = 5;
 export const MAX_IMAGES_SIMPLE = 3;
 export const MAX_IMAGES_DEEP = 10;
 /** 심층 분석 시 메모(말투·행동 등) 최소 글자수 */
@@ -65,7 +66,7 @@ export function validateAnalysisRequest({ mode, images, memo }) {
 /**
  * 결제가 필요한지 (서버 기준)
  * - 심층: 항상 결제
- * - 간단: 무료 횟수(3회) 초과 시 결제
+ * - 간단: 무료 횟수(FREE_LIMIT) 초과 시 결제
  */
 export function requiresPayment(mode, countBeforeThisRequest) {
   if (mode === ANALYSIS_MODE.DEEP) return true;

@@ -1,5 +1,7 @@
 "use client";
 
+import { FREE_LIMIT } from "@/lib/analysis-tier";
+
 const PRICE = 1900;
 
 export default function PaymentModal({
@@ -16,7 +18,7 @@ export default function PaymentModal({
   const title = isDeepTab ? "심층 분석 결제" : "유료 분석 안내";
   const desc = isDeepTab
     ? "심층 분석(최대 10장 + 말투·행동 등 텍스트)는 회당 결제 후 진행돼요"
-    : "무료 간단 분석 3회를 모두 사용했어요. 결제 후 간단 분석을 이어갈 수 있어요";
+    : `무료 간단 분석 ${FREE_LIMIT}회를 모두 사용했어요. 결제 후 간단 분석을 이어갈 수 있어요`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
