@@ -433,7 +433,7 @@ export const SAJU_PRICE = 2900;    // 가격 정책에 따라
   - `NEXT_PUBLIC_PORTONE_CHANNEL_KEY`
   - `PORTONE_API_SECRET`
 - [x] PortOne 채널키 발급 및 코드 적용 완료 (`channel-key-1ab9fcbc-c6ad-4e16-a448-105053df67f6`)
-- [ ] Supabase 프로덕션 프로젝트 확인 (현재: `unetcuffkuvcfgefrvez`)
+- [ ] Supabase 프로덕션 프로젝트 확인 (현재: `xffufdcejuqknvnfisjr`)
 - [ ] Gemini API 유료 전환 (일 500회 초과 예상 시)
 
 ### 7.2 PortOne 채널키 설정 ✅ 완료
