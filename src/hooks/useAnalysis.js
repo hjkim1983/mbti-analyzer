@@ -48,9 +48,13 @@ export default function useAnalysis() {
           .maybeSingle();
 
         if (data) {
+          const used = Math.max(
+            0,
+            Math.floor(Number(data.analysis_count) || 0),
+          );
           setFreeCount({
-            used: data.analysis_count,
-            remaining: Math.max(0, FREE_LIMIT - data.analysis_count),
+            used,
+            remaining: Math.max(0, FREE_LIMIT - used),
           });
         }
       } catch {

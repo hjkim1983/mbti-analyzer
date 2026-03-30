@@ -4,6 +4,12 @@ import { FREE_LIMIT } from "./analysis-tier";
 export { FREE_LIMIT };
 export const PRICE_PER_ANALYSIS = 1900;
 
+/** CSV 등으로 analysis_count가 NULL/문자열이어도 숫자로 통일 */
+function normalizeCount(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
+}
+
 /**
  * 디바이스의 분석 횟수 조회 (없으면 프로필 자동 생성)
  */
@@ -12,6 +18,7 @@ export async function getAnalysisCount(deviceId) {
     .from("profiles")
     .select("id, analysis_count")
     .eq("device_id", deviceId)
+    .limit(1)
     .maybeSingle();
 
   if (!profile && (!error || error.code === "PGRST116")) {
@@ -21,15 +28,33 @@ export async function getAnalysisCount(deviceId) {
       .select("id, analysis_count")
       .single();
 
-    if (insertErr) throw insertErr;
-    profile = newProfile;
+    if (insertErr) {
+      // 동일 device_id가 CSV로 이미 있으면 unique 위반 → 다시 조회
+      if (insertErr.code === "23505") {
+        const retry = await supabase
+          .from("profiles")
+          .select("id, analysis_count")
+          .eq("device_id", deviceId)
+          .limit(1)
+          .maybeSingle();
+        if (retry.data) {
+          profile = retry.data;
+        } else {
+          throw insertErr;
+        }
+      } else {
+        throw insertErr;
+      }
+    } else {
+      profile = newProfile;
+    }
   } else if (error) {
     throw error;
   }
 
   return {
     profileId: profile.id,
-    count: profile.analysis_count,
+    count: normalizeCount(profile.analysis_count),
   };
 }
 
@@ -46,9 +71,9 @@ export async function incrementAnalysisCount(profileId) {
       .from("profiles")
       .select("analysis_count")
       .eq("id", profileId)
-      .single();
+      .maybeSingle();
 
-    const newCount = (profile?.analysis_count || 0) + 1;
+    const newCount = normalizeCount(profile?.analysis_count) + 1;
 
     await supabase
       .from("profiles")
@@ -77,20 +102,24 @@ export async function saveAnalysis({
   paymentId,
   analysisMode = "simple",
 }) {
+  const rawConf = Number(result.confidence);
+  const confidence = Number.isFinite(rawConf) ? Math.round(rawConf) : 0;
+
   const { data, error } = await supabase
     .from("analyses")
     .insert({
       profile_id: profileId,
       target_name: targetName,
-      mbti_type: result.mbtiType,
-      confidence: result.confidence,
-      confidence_level: result.confidenceLevel,
+      mbti_type: String(result.mbtiType || "XXXX").slice(0, 4),
+      confidence,
+      confidence_level: result.confidenceLevel ?? null,
       analysis_detail: result,
       memo: memo || null,
-      image_count: imageCount,
-      is_paid: isPaid,
+      image_count: Math.max(0, Math.floor(Number(imageCount) || 0)),
+      is_paid: Boolean(isPaid),
       payment_id: paymentId || null,
-      analysis_mode: analysisMode,
+      analysis_mode:
+        analysisMode === "deep" ? "deep" : "simple",
     })
     .select("id")
     .single();

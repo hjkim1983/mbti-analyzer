@@ -68,3 +68,28 @@ CREATE POLICY "analyses_all" ON analyses FOR ALL USING (true) WITH CHECK (true);
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "payments_all" ON payments;
 CREATE POLICY "payments_all" ON payments FOR ALL USING (true) WITH CHECK (true);
+
+-- 5. RPC: 분석 횟수 +1 (CSV 이전 DB 등에서 함수가 없으면 클라이언트 폴백이 동작하지만, 여기서 통일)
+CREATE OR REPLACE FUNCTION increment_analysis_count(p_profile_id UUID)
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  new_count INTEGER;
+BEGIN
+  UPDATE profiles
+  SET
+    analysis_count = COALESCE(analysis_count, 0) + 1,
+    updated_at = now()
+  WHERE id = p_profile_id
+  RETURNING analysis_count INTO new_count;
+
+  RETURN COALESCE(new_count, 0);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION increment_analysis_count(UUID) TO anon;
+GRANT EXECUTE ON FUNCTION increment_analysis_count(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION increment_analysis_count(UUID) TO service_role;

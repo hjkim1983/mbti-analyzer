@@ -20,7 +20,7 @@ export async function POST(request) {
       .from("payments")
       .select("id")
       .eq("portone_payment_id", paymentId)
-      .single();
+      .maybeSingle();
 
     if (existing) {
       return NextResponse.json(
@@ -72,7 +72,7 @@ export async function POST(request) {
       .from("profiles")
       .select("id")
       .eq("device_id", deviceId)
-      .single();
+      .maybeSingle();
 
     // 5. payments 테이블에 기록
     await supabase.from("payments").insert({
