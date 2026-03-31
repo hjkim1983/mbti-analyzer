@@ -122,6 +122,52 @@ function buildUserParts({ targetName, memo, images, mode = ANALYSIS_MODE.SIMPLE 
   return parts;
 }
 
+/** ```json ... ``` 등 마크다운 펜스 제거 */
+function stripMarkdownJsonFence(s) {
+  let t = s.trim();
+  if (!t.startsWith("```")) return t;
+  t = t.replace(/^```(?:json)?\s*/i, "");
+  const last = t.lastIndexOf("```");
+  if (last !== -1) t = t.slice(0, last);
+  return t.trim();
+}
+
+/**
+ * Gemini가 JSON 외 문자를 섞거나 잘랐을 때 파싱 시도
+ */
+function parseGeminiAnalysisJson(raw) {
+  if (typeof raw !== "string" || !raw.trim()) return null;
+
+  const candidates = [raw.trim(), stripMarkdownJsonFence(raw)];
+
+  for (const chunk of candidates) {
+    try {
+      const v = JSON.parse(chunk);
+      if (v && typeof v === "object") return v;
+    } catch {
+      /* 다음 시도 */
+    }
+  }
+
+  const cleaned = stripMarkdownJsonFence(raw);
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      return JSON.parse(jsonMatch[0]);
+    } catch {
+      const partial = jsonMatch[0];
+      const fixed = partial + '"}}'.repeat(3);
+      try {
+        return JSON.parse(fixed);
+      } catch {
+        /* 복구 불가 */
+      }
+    }
+  }
+
+  return null;
+}
+
 export async function callGemini({
   targetName,
   memo,
@@ -196,33 +242,41 @@ export async function callGemini({
 
     const data = await res.json();
 
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const candidate = data.candidates?.[0];
+    const finishReason = candidate?.finishReason;
+    const text =
+      candidate?.content?.parts
+        ?.map((p) => p.text)
+        .filter(Boolean)
+        .join("") ?? "";
 
     if (!text) {
+      const block = data.promptFeedback?.blockReason;
+      if (block) {
+        throw new Error(`Gemini 응답이 차단되었습니다: ${block}`);
+      }
+      if (finishReason === "MAX_TOKENS") {
+        throw new Error(
+          "응답이 너무 길어 잘렸습니다. 이미지 수를 줄이거나 다시 시도해주세요.",
+        );
+      }
       throw new Error("Gemini 응답이 비어있습니다.");
     }
 
-    try {
-      return JSON.parse(text);
-    } catch {
-      // MAX_TOKENS로 잘렸을 때 JSON 객체 추출 시도
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        try {
-          return JSON.parse(jsonMatch[0]);
-        } catch {
-          // 잘린 JSON 복구 시도 (닫는 괄호 추가)
-          const partial = jsonMatch[0];
-          const fixed = partial + '"}}'.repeat(3);
-          try {
-            return JSON.parse(fixed);
-          } catch {
-            // 복구 불가
-          }
-        }
-      }
-      throw new Error("AI 응답을 파싱할 수 없습니다. 다시 시도해주세요.");
+    const parsed = parseGeminiAnalysisJson(text);
+    if (parsed) return parsed;
+
+    if (finishReason === "MAX_TOKENS") {
+      throw new Error(
+        "응답이 잘려 JSON이 완성되지 않았습니다. 이미지를 줄이거나 다시 시도해주세요.",
+      );
     }
+
+    console.error(
+      "Gemini JSON 파싱 실패 (앞 600자):",
+      text.slice(0, 600),
+    );
+    throw new Error("AI 응답을 파싱할 수 없습니다. 다시 시도해주세요.");
   } catch (err) {
     clearTimeout(timeout);
     if (err.name === "AbortError") {
