@@ -164,7 +164,7 @@ export default function HomeContent() {
               hasMemo={analysis.hasMemo}
               imageCount={analysis.images.length}
               onAnalyze={analysis.requestAnalysis}
-              isLoading={analysis.isChecking}
+              isLoading={analysis.isAnalysisBusy}
               isDeepTab={analysis.isDeepTab}
               memoLength={analysis.memo.trim().length}
             />

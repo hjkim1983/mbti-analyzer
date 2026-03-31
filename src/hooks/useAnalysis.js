@@ -216,6 +216,8 @@ export default function useAnalysis() {
 
   const requestAnalysis = useCallback(async () => {
     if (!canAnalyze) return;
+    // 로딩 중 중복 요청 방지: 병렬 호출 시 나중에 실패한 요청이 setStage("main")으로 성공 화면을 덮어쓸 수 있음
+    if (stage === "loading") return;
     setError(null);
 
     const mode = isPremiumTab ? ANALYSIS_MODE.PREMIUM : ANALYSIS_MODE.FREE;
@@ -260,7 +262,7 @@ export default function useAnalysis() {
     } finally {
       setIsChecking(false);
     }
-  }, [canAnalyze, callAnalyzeApi, startLoading, isPremiumTab, freeCount]);
+  }, [canAnalyze, callAnalyzeApi, startLoading, isPremiumTab, freeCount, stage]);
 
   const onPaymentComplete = useCallback(
     async (paymentId) => {
@@ -303,6 +305,9 @@ export default function useAnalysis() {
     setActiveTabState("free");
   }, [images]);
 
+  /** 분석 API 호출 중(버튼 중복 클릭 방지): 확인 중 또는 로딩 스테이지 */
+  const isAnalysisBusy = isChecking || stage === "loading";
+
   return {
     stage,
     activeTab,
@@ -315,6 +320,7 @@ export default function useAnalysis() {
     freeCount,
     error,
     isChecking,
+    isAnalysisBusy,
     imageCount,
     maxImages,
     isMulti,
