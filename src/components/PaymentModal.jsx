@@ -10,15 +10,15 @@ export default function PaymentModal({
   onConfirm,
   onCancel,
   isProcessing,
-  /** true: 유료 심층 탭에서 연 결제 */
+  /** Premium 탭에서 연 결제 여부 (무료 한도 소진 후 자동 전환 시에도 true) */
   isDeepTab = false,
 }) {
   if (!isOpen) return null;
 
-  const title = isDeepTab ? "심층 분석 결제" : "유료 분석 안내";
+  const title = "프리미엄 리포트 결제";
   const desc = isDeepTab
-    ? "심층 분석(최대 10장 + 말투·행동 등 텍스트)는 회당 결제 후 진행돼요"
-    : `무료 간단 분석 ${FREE_LIMIT}회를 모두 사용했어요. 결제 후 간단 분석을 이어갈 수 있어요`;
+    ? "Premium(최대 10장, 메모 선택) 풀 리포트는 회당 결제 후 진행돼요"
+    : `무료 빠른 추정 ${FREE_LIMIT}회를 모두 사용했어요. Premium 리포트를 위해 결제해 주세요`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -48,7 +48,7 @@ export default function PaymentModal({
         >
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm text-gray-600">
-              {isDeepTab ? "심층 MBTI 분석 1회" : "간단 MBTI 분석 1회"}
+              Premium MBTI 리포트 1회
             </span>
             <span className="text-lg font-extrabold text-gray-900">
               ₩{PRICE.toLocaleString()}

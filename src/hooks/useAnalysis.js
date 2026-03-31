@@ -7,16 +7,15 @@ import { getLoadingSteps } from "@/constants/loading-steps";
 import { supabase } from "@/lib/supabase";
 import {
   FREE_LIMIT,
-  MAX_IMAGES_SIMPLE,
-  MAX_IMAGES_DEEP,
-  MEMO_MIN_DEEP,
+  MAX_IMAGES_FREE,
+  MAX_IMAGES_PREMIUM,
   ANALYSIS_MODE,
 } from "@/lib/analysis-tier";
 
 export default function useAnalysis() {
   const [stage, setStage] = useState("main");
-  /** simple | deep — UI 탭 (API mode와 동일) */
-  const [activeTab, setActiveTab] = useState("simple");
+  /** free | premium — UI 탭 (API mode와 동일) */
+  const [activeTab, setActiveTabState] = useState("free");
   const [images, setImages] = useState([]);
   const [targetName, setTargetName] = useState("");
   const [memo, setMemo] = useState("");
@@ -28,14 +27,15 @@ export default function useAnalysis() {
   const timerRef = useRef(null);
 
   const imageCount = images.length;
-  const maxImages = activeTab === "deep" ? MAX_IMAGES_DEEP : MAX_IMAGES_SIMPLE;
+  const maxImages =
+    activeTab === "premium" ? MAX_IMAGES_PREMIUM : MAX_IMAGES_FREE;
   const isMulti = imageCount >= 2;
   const hasMemo = memo.trim().length > 0;
-  const isDeepTab = activeTab === "deep";
+  const isPremiumTab = activeTab === "premium";
 
-  const canAnalyze = isDeepTab
-    ? imageCount >= 1 && memo.trim().length >= MEMO_MIN_DEEP
-    : imageCount >= 1 && imageCount <= MAX_IMAGES_SIMPLE;
+  const canAnalyze = isPremiumTab
+    ? imageCount >= 1 && imageCount <= MAX_IMAGES_PREMIUM
+    : imageCount >= 1 && imageCount <= MAX_IMAGES_FREE;
 
   useEffect(() => {
     (async () => {
@@ -59,25 +59,25 @@ export default function useAnalysis() {
             remaining: Math.max(0, FREE_LIMIT - used),
           });
         } else {
-          // 아직 profiles 행이 없음 → 서버에서 첫 분석 시 생성되므로 UI는 전체 무료로 표시
           setFreeCount({ used: 0, remaining: FREE_LIMIT });
         }
       } catch {
-        // 네트워크/설정 오류 시에는 표시 생략(분석 API에서 다시 조회)
+        /* 네트워크 오류 시 분석 API에서 재조회 */
       }
     })();
   }, []);
 
-  /** 간단 탭에서는 추가 텍스트 비사용 */
+  /** Free 탭에서는 캡처만 — 메모 비움 */
   useEffect(() => {
-    if (!isDeepTab) {
+    if (!isPremiumTab) {
       setMemo("");
     }
-  }, [isDeepTab]);
+  }, [isPremiumTab]);
 
   const addImages = useCallback(
     (files) => {
-      const cap = activeTab === "deep" ? MAX_IMAGES_DEEP : MAX_IMAGES_SIMPLE;
+      const cap =
+        activeTab === "premium" ? MAX_IMAGES_PREMIUM : MAX_IMAGES_FREE;
       const newImgs = Array.from(files)
         .filter((f) => f.type.startsWith("image/"))
         .slice(0, cap - images.length)
@@ -98,14 +98,15 @@ export default function useAnalysis() {
     });
   }, []);
 
-  /** 탭 전환 시 장 수 상한 맞추기 */
+  /** 탭 전환 시 장 수 상한·메모 정리 */
   const handleTabChange = useCallback((tabId) => {
-    setActiveTab(tabId);
-    if (tabId === "simple") {
+    setActiveTabState(tabId);
+    if (tabId === "free") {
+      setMemo("");
       setImages((prev) => {
-        if (prev.length <= MAX_IMAGES_SIMPLE) return prev;
-        const kept = prev.slice(0, MAX_IMAGES_SIMPLE);
-        prev.slice(MAX_IMAGES_SIMPLE).forEach((img) => {
+        if (prev.length <= MAX_IMAGES_FREE) return prev;
+        const kept = prev.slice(0, MAX_IMAGES_FREE);
+        prev.slice(MAX_IMAGES_FREE).forEach((img) => {
           if (img?.preview) URL.revokeObjectURL(img.preview);
         });
         return kept;
@@ -127,13 +128,13 @@ export default function useAnalysis() {
       setStage("loading");
       setLoadingStep(0);
 
-      const mode = isDeepTab ? ANALYSIS_MODE.DEEP : ANALYSIS_MODE.SIMPLE;
+      const mode = isPremiumTab ? ANALYSIS_MODE.PREMIUM : ANALYSIS_MODE.FREE;
       const { messages } = getLoadingSteps(isMulti, hasMemo, imageCount, mode);
 
       let step = 0;
       const intervalMs = isMulti
         ? Math.max(900, imageCount * 600)
-        : isDeepTab
+        : isPremiumTab
           ? 1000
           : 900;
 
@@ -164,7 +165,7 @@ export default function useAnalysis() {
           setStage("main");
         });
     },
-    [isMulti, hasMemo, imageCount, isDeepTab],
+    [isMulti, hasMemo, imageCount, isPremiumTab],
   );
 
   const callAnalyzeApi = useCallback(
@@ -172,7 +173,7 @@ export default function useAnalysis() {
       const deviceId = await getDeviceId();
       const mode =
         modeOverride ||
-        (isDeepTab ? ANALYSIS_MODE.DEEP : ANALYSIS_MODE.SIMPLE);
+        (isPremiumTab ? ANALYSIS_MODE.PREMIUM : ANALYSIS_MODE.FREE);
 
       const total = images.length;
       const base64Images = await Promise.all(
@@ -191,7 +192,7 @@ export default function useAnalysis() {
         body: JSON.stringify({
           deviceId,
           targetName: targetName || "미지정",
-          memo: mode === ANALYSIS_MODE.SIMPLE ? "" : memo,
+          memo: mode === ANALYSIS_MODE.FREE ? "" : memo,
           images: base64Images,
           paymentId,
           mode,
@@ -210,22 +211,26 @@ export default function useAnalysis() {
 
       return data;
     },
-    [images, targetName, memo, isDeepTab],
+    [images, targetName, memo, isPremiumTab],
   );
 
   const requestAnalysis = useCallback(async () => {
     if (!canAnalyze) return;
     setError(null);
 
-    const mode = isDeepTab ? ANALYSIS_MODE.DEEP : ANALYSIS_MODE.SIMPLE;
+    const mode = isPremiumTab ? ANALYSIS_MODE.PREMIUM : ANALYSIS_MODE.FREE;
 
-    if (mode === ANALYSIS_MODE.DEEP) {
+    if (mode === ANALYSIS_MODE.PREMIUM) {
       setStage("payment");
       return;
     }
 
     const used = freeCount?.used ?? 0;
     if (used >= FREE_LIMIT) {
+      setError(
+        "무료 빠른 추정 3회를 모두 사용했어요. 프리미엄 리포트를 위해 결제를 진행해 주세요.",
+      );
+      setActiveTabState("premium");
       setStage("payment");
       return;
     }
@@ -233,13 +238,17 @@ export default function useAnalysis() {
     setIsChecking(true);
 
     try {
-      const apiPromise = callAnalyzeApi(null, ANALYSIS_MODE.SIMPLE);
+      const apiPromise = callAnalyzeApi(null, ANALYSIS_MODE.FREE);
 
       startLoading(
         apiPromise.catch((err) => {
           if (err.message === "PAYMENT_REQUIRED") {
             clearInterval(timerRef.current);
+            setActiveTabState("premium");
             setStage("payment");
+            setError(
+              "무료 횟수가 부족해요. 프리미엄 탭에서 결제 후 진행해 주세요.",
+            );
             return null;
           }
           throw err;
@@ -251,18 +260,17 @@ export default function useAnalysis() {
     } finally {
       setIsChecking(false);
     }
-  }, [canAnalyze, callAnalyzeApi, startLoading, isDeepTab, freeCount]);
+  }, [canAnalyze, callAnalyzeApi, startLoading, isPremiumTab, freeCount]);
 
   const onPaymentComplete = useCallback(
     async (paymentId) => {
       if (!paymentId) return;
 
       setError(null);
-      const mode = isDeepTab ? ANALYSIS_MODE.DEEP : ANALYSIS_MODE.SIMPLE;
-      const apiPromise = callAnalyzeApi(paymentId, mode);
+      const apiPromise = callAnalyzeApi(paymentId, ANALYSIS_MODE.PREMIUM);
       startLoading(apiPromise);
     },
-    [callAnalyzeApi, startLoading, isDeepTab],
+    [callAnalyzeApi, startLoading],
   );
 
   const onPaymentCancel = useCallback(() => {
@@ -270,15 +278,14 @@ export default function useAnalysis() {
     setError(null);
   }, []);
 
-  /** 간단 결과 → 심층 탭으로 (이미지·이름 유지) */
-  const switchToDeepTab = useCallback(() => {
+  /** Free 결과 → 프리미엄 탭으로 (이미지·이름 유지) */
+  const switchToPremiumTab = useCallback(() => {
     clearInterval(timerRef.current);
     setStage("main");
     setLoadingStep(0);
     setResult(null);
     setError(null);
-    setMemo("");
-    setActiveTab("deep");
+    setActiveTabState("premium");
   }, []);
 
   const reset = useCallback(() => {
@@ -293,7 +300,7 @@ export default function useAnalysis() {
     setTargetName("");
     setMemo("");
     setError(null);
-    setActiveTab("simple");
+    setActiveTabState("free");
   }, [images]);
 
   return {
@@ -313,7 +320,7 @@ export default function useAnalysis() {
     isMulti,
     hasMemo,
     canAnalyze,
-    isDeepTab,
+    isDeepTab: isPremiumTab,
 
     addImages,
     removeImage,
@@ -323,7 +330,7 @@ export default function useAnalysis() {
     requestAnalysis,
     onPaymentComplete,
     onPaymentCancel,
-    switchToDeepTab,
+    switchToPremiumTab,
     reset,
     setError,
   };

@@ -1,74 +1,49 @@
 import { ANALYSIS_MODE } from "@/lib/analysis-tier";
 
 /**
+ * 로딩 단계 문구 (이미지 장수·메모 유무·모드별)
  * @param {boolean} isMulti
  * @param {boolean} hasMemo
  * @param {number} imageCount
- * @param {string} [mode] ANALYSIS_MODE.SIMPLE | DEEP
+ * @param {string} [mode] ANALYSIS_MODE.FREE | PREMIUM
  */
 export function getLoadingSteps(
   isMulti,
   hasMemo,
-  imageCount = 1,
-  mode = ANALYSIS_MODE.SIMPLE,
+  imageCount,
+  mode = ANALYSIS_MODE.FREE,
 ) {
-  const deep = mode === ANALYSIS_MODE.DEEP;
+  const premium = mode === ANALYSIS_MODE.PREMIUM;
 
   if (isMulti) {
+    const steps = [
+      `${imageCount}장 이미지 분석 준비`,
+      "대화·프로필 영역 분리",
+      premium ? "프리미엄 근거 정리" : "MBTI 데이터와 대조",
+      "말투 패턴 추출",
+      "프로필 분위기 읽기",
+      hasMemo ? "추가 메모 반영" : "이미지 신호 종합",
+      premium ? "프리미엄 해석" : "빠른 추정 정리",
+      "결과 카드 생성",
+    ];
     return {
-      steps: [
-        `캡처 이미지 ${imageCount}장 분석`,
-        "전체 맥락 파악 중",
-        "말투 & 어조 패턴 분석",
-        "프로필 분위기 스캔",
-        hasMemo ? "추가 정보 종합 분석" : "이모티콘 & 반응 패턴 분석",
-        deep ? "심층 근거 정리" : "MBTI 데이터와 대조",
-        "결과 정리",
-      ],
-      messages: [
-        `캡처 이미지 ${imageCount}장 분석 중...`,
-        "전체 맥락 파악 중...",
-        "카카오톡 말투 패턴 파악 중...",
-        "프로필 분위기 & 상태 메시지 스캔 중...",
-        hasMemo ? "추가 정보 종합 중..." : "이모티콘 사용 빈도 계산 중...",
-        deep ? "심층 분석 근거 정리 중..." : "MBTI 데이터와 대조 중...",
-        "분석 완료! 결과를 정리하고 있어요...",
-      ],
-      icons: ["📸", "🔮", "💬", "📸", hasMemo ? "✏️" : "😄", deep ? "✨" : "🧠", "📋"],
+      steps,
+      messages: steps,
+      icons: ["📸", "🔮", "💬", "📸", hasMemo ? "✏️" : "😄", premium ? "✨" : "🧠", "📋"],
     };
   }
 
-  if (hasMemo) {
-    return {
-      steps: [
-        "말투 & 어조 패턴 분석",
-        "추가 입력 정보 분석",
-        deep ? "심층 해석" : "MBTI 데이터와 대조",
-        "분석 결과 정리",
-      ],
-      messages: [
-        "말투 패턴 분석 중...",
-        "입력하신 정보 분석 중...",
-        deep ? "심층 해석 중..." : "MBTI 데이터와 대조 중...",
-        "분석 완료! 결과를 정리하고 있어요...",
-      ],
-      icons: ["💬", "✏️", deep ? "✨" : "🧠", "📋"],
-    };
-  }
-
+  const steps = [
+    "이미지 분석 준비",
+    "대화 톤 읽기",
+    premium ? "프리미엄 근거 정리" : "MBTI 데이터와 대조",
+    hasMemo ? "메모 반영" : "말투 패턴 추출",
+    premium ? "프리미엄 해석" : "빠른 추정 정리",
+    "결과 생성",
+  ];
   return {
-    steps: [
-      "말투 & 어조 패턴 분석",
-      "이모티콘 사용 빈도 계산",
-      "문장 길이 & 구조 파악",
-      deep ? "심층 근거 정리" : "MBTI 데이터와 대조",
-    ],
-    messages: [
-      "카카오톡 말투 패턴 분석 중...",
-      "이모티콘 빈도 계산 중...",
-      deep ? "문장 구조 심층 분석 중..." : "MBTI 데이터와 대조 중...",
-      "분석 완료! 결과를 정리하고 있어요...",
-    ],
-    icons: ["💬", "😄", "📝", deep ? "✨" : "🧠"],
+    steps,
+    messages: steps,
+    icons: ["💬", "✏️", premium ? "✨" : "🧠", "📋"],
   };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { FREE_LIMIT, MEMO_MIN_DEEP } from "@/lib/analysis-tier";
+import { FREE_LIMIT } from "@/lib/analysis-tier";
 
 const PRICE = 1900;
 
@@ -16,19 +16,17 @@ export default function AnalyzeButton({
   memoLength = 0,
 }) {
   const used = freeCount?.used ?? 0;
-  const simpleNeedsPay = !isDeepTab && used >= FREE_LIMIT;
+  const freeNeedsPay = !isDeepTab && used >= FREE_LIMIT;
 
   const buttonLabel = (() => {
     if (isLoading) return "확인 중...";
     if (isDeepTab) {
       if (imageCount < 1) return "캡처를 1장 이상 올려주세요";
-      if (memoLength < MEMO_MIN_DEEP)
-        return `추가 정보 ${MEMO_MIN_DEEP}자 이상 입력`;
-      return "심층 MBTI 분석 요청 (결제)";
+      return "프리미엄 MBTI 리포트 요청 (결제)";
     }
     if (isMulti && hasMemo) return "종합 MBTI 분석 요청";
     if (isMulti) return `캡처 ${imageCount}장으로 MBTI 분석 요청`;
-    return "간단 MBTI 분석 요청";
+    return "빠른 MBTI 추정 요청";
   })();
 
   return (
@@ -47,19 +45,16 @@ export default function AnalyzeButton({
         {isDeepTab ? (
           <span
             className={`text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1 ${
-              memoLength >= MEMO_MIN_DEEP
+              hasMemo
                 ? "bg-green-50 text-green-600"
                 : "bg-white/40 text-gray-400"
             }`}
           >
-            {memoLength >= MEMO_MIN_DEEP ? "✓" : "○"} 추가 정보{" "}
-            {memoLength >= MEMO_MIN_DEEP
-              ? "충분"
-              : `${memoLength}/${MEMO_MIN_DEEP}자`}
+            {hasMemo ? "✓" : "○"} 추가 정보 {hasMemo ? "입력됨" : "선택"}
           </span>
         ) : (
           <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-white/40 text-gray-400">
-            간단 모드 · 텍스트 없음
+            Free · 캡처만
           </span>
         )}
         {(isMulti || (isDeepTab && hasMemo)) && (
@@ -67,7 +62,7 @@ export default function AnalyzeButton({
             className="text-xs px-2.5 py-1 rounded-full font-bold flex items-center gap-1"
             style={{ background: "rgba(254,229,0,0.2)", color: "#856C00" }}
           >
-            ✨ {isDeepTab ? "심층" : isMulti && hasMemo ? "최고 정확도" : "높은 정확도"}
+            ✨ {isDeepTab ? "프리미엄" : isMulti && hasMemo ? "최고 정확도" : "높은 정확도"}
           </span>
         )}
       </div>
@@ -89,18 +84,18 @@ export default function AnalyzeButton({
           cursor: canAnalyze && !isLoading ? "pointer" : "not-allowed",
         }}
       >
-        <span className="text-xl">{isDeepTab || simpleNeedsPay ? "💳" : "🔍"}</span>
+        <span className="text-xl">{isDeepTab || freeNeedsPay ? "💳" : "🔍"}</span>
         <span>{buttonLabel}</span>
       </button>
 
       {canAnalyze && !isLoading && (
         <p className="text-xs text-center text-gray-400 mt-2">
           {isDeepTab
-            ? `심층 분석 · 결제 ₩${PRICE.toLocaleString()} · 약 10~20초`
-            : simpleNeedsPay
-              ? `간단 분석 · 결제 ₩${PRICE.toLocaleString()}`
+            ? `프리미엄 리포트 · 결제 ₩${PRICE.toLocaleString()} · 약 10~20초`
+            : freeNeedsPay
+              ? `프리미엄으로 전환 후 결제 ₩${PRICE.toLocaleString()}`
               : freeCount
-                ? `무료 간단 ${FREE_LIMIT - used}회 남음 · 약 5~15초`
+                ? `무료 빠른 추정 ${Math.max(0, FREE_LIMIT - used)}회 남음 · 약 5~15초`
                 : "약 5~15초 내에 결과를 드릴게요"}
         </p>
       )}

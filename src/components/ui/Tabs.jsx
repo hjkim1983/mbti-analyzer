@@ -1,12 +1,12 @@
 "use client";
 
 /**
- * 무료(간단) / 유료(심층) 전환용 상단 탭 — 앱 글래스 톤에 맞춤
+ * Free(빠른 추정) / Premium(프리미엄 리포트) 상단 탭
  */
 export default function AnalysisTabs({ value, onChange, simpleRemaining }) {
   const tabs = [
-    { id: "simple", label: "무료 · 간단 추측", hint: "캡처 3장까지" },
-    { id: "deep", label: "유료 · 심층 분석", hint: "최대 10장 + 텍스트" },
+    { id: "free", label: "Free · 빠른 추정", hint: "캡처 3장까지" },
+    { id: "premium", label: "Premium · 리포트", hint: "최대 10장 · 메모 선택" },
   ];
 
   return (
@@ -40,16 +40,16 @@ export default function AnalysisTabs({ value, onChange, simpleRemaining }) {
           );
         })}
       </div>
-      {value === "simple" && simpleRemaining != null && (
+      {value === "free" && simpleRemaining != null && (
         <p className="text-[11px] text-center text-amber-800 mt-2 font-medium">
           {simpleRemaining > 0
-            ? `무료 간단 분석 ${simpleRemaining}회 남음 (디바이스 기준)`
-            : "무료 간단 분석 횟수를 모두 사용했어요. 간단 분석도 결제 후 이용하거나 유료 심층 탭을 이용해주세요"}
+            ? `무료 빠른 추정 ${simpleRemaining}회 남음 (디바이스 기준)`
+            : "무료 횟수를 모두 사용했어요. Premium 탭에서 결제 후 프리미엄 리포트를 받을 수 있어요"}
         </p>
       )}
-      {value === "deep" && (
+      {value === "premium" && (
         <p className="text-[11px] text-center text-gray-500 mt-2">
-          말투·행동·특징을 자세히 적을수록 정확도가 올라가요 · 회당 결제
+          4축·관계·소통 등 풀 리포트 · 메모는 선택 · 회당 ₩1,900
         </p>
       )}
     </div>

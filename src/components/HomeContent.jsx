@@ -13,7 +13,11 @@ import AnalysisTabs from "@/components/ui/Tabs";
 import useAnalysis from "@/hooks/useAnalysis";
 import usePayment from "@/hooks/usePayment";
 import { getDeviceId } from "@/lib/device-id";
-import { FREE_LIMIT, ANALYSIS_MODE } from "@/lib/analysis-tier";
+import {
+  FREE_LIMIT,
+  ANALYSIS_MODE,
+  normalizeAnalysisMode,
+} from "@/lib/analysis-tier";
 
 export default function HomeContent() {
   const [isMounted, setIsMounted] = useState(false);
@@ -41,6 +45,13 @@ export default function HomeContent() {
   const normalizeResult = (raw) => {
     if (!raw) return null;
     const result = raw.data ?? raw;
+    const analysisMode = normalizeAnalysisMode(
+      result.analysisMode || ANALYSIS_MODE.FREE,
+    );
+    const tier =
+      result.tier ||
+      (analysisMode === ANALYSIS_MODE.PREMIUM ? "premium" : "free");
+
     return {
       mbtiType: result.mbtiType || "XXXX",
       emoji: result.emoji || "🤔",
@@ -48,7 +59,13 @@ export default function HomeContent() {
       color: result.color || "#FEE500",
       confidence: result.confidence ?? 0,
       confidenceLevel: result.confidenceLevel || "LOW",
-      indicators: result.indicators || {},
+      tier,
+      summary: result.summary || null,
+      teaserBullets: Array.isArray(result.teaserBullets)
+        ? result.teaserBullets
+        : [],
+      lockedPreview: result.lockedPreview || null,
+      indicators: result.indicators || null,
       highlights: result.highlights || {},
       traits: Array.isArray(result.traits) ? result.traits : [],
       tags: Array.isArray(result.tags) ? result.tags : [],
@@ -60,12 +77,12 @@ export default function HomeContent() {
           )
         : [],
       profile: result.profile || null,
-      analysisMode: result.analysisMode || ANALYSIS_MODE.SIMPLE,
+      analysisMode,
     };
   };
 
-  const handleGoDeep = useCallback(() => {
-    analysis.switchToDeepTab();
+  const handleGoPremium = useCallback(() => {
+    analysis.switchToPremiumTab();
     setTimeout(() => {
       formTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 80);
@@ -82,8 +99,8 @@ export default function HomeContent() {
   const normalizedResult = normalizeResult(analysis.result);
 
   const loadingMode = analysis.isDeepTab
-    ? ANALYSIS_MODE.DEEP
-    : ANALYSIS_MODE.SIMPLE;
+    ? ANALYSIS_MODE.PREMIUM
+    : ANALYSIS_MODE.FREE;
 
   return (
     <div className="min-h-screen">
@@ -126,7 +143,7 @@ export default function HomeContent() {
               maxImages={analysis.maxImages}
               tierHint={
                 analysis.isDeepTab
-                  ? "말투·행동 텍스트와 함께"
+                  ? "메모는 선택 · 캡처와 함께"
                   : "추가 텍스트 없이 빠르게"
               }
             />
@@ -182,7 +199,7 @@ export default function HomeContent() {
             hasMemo={analysis.hasMemo}
             onReset={analysis.reset}
             analysisMode={normalizedResult.analysisMode}
-            onGoDeep={handleGoDeep}
+            onGoPremium={handleGoPremium}
           />
         )}
       </main>

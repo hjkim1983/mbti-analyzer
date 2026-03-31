@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import { FREE_LIMIT } from "./analysis-tier";
+import { FREE_LIMIT, ANALYSIS_MODE, normalizeAnalysisMode } from "./analysis-tier";
 
 export { FREE_LIMIT };
 export const PRICE_PER_ANALYSIS = 1900;
@@ -100,7 +100,7 @@ export async function saveAnalysis({
   imageCount,
   isPaid,
   paymentId,
-  analysisMode = "simple",
+  analysisMode = ANALYSIS_MODE.FREE,
 }) {
   const rawConf = Number(result.confidence);
   const confidence = Number.isFinite(rawConf) ? Math.round(rawConf) : 0;
@@ -119,7 +119,9 @@ export async function saveAnalysis({
       is_paid: Boolean(isPaid),
       payment_id: paymentId || null,
       analysis_mode:
-        analysisMode === "deep" ? "deep" : "simple",
+        normalizeAnalysisMode(analysisMode) === ANALYSIS_MODE.PREMIUM
+          ? "premium"
+          : "free",
     })
     .select("id")
     .single();

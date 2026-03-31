@@ -9,6 +9,7 @@ import {
 import { getMbtiMeta } from "@/constants/mbti-data";
 import {
   ANALYSIS_MODE,
+  normalizeAnalysisMode,
   validateAnalysisRequest,
   requiresPayment,
 } from "@/lib/analysis-tier";
@@ -22,8 +23,7 @@ export async function POST(request) {
     const { deviceId, targetName, memo, images, paymentId, mode: rawMode } =
       body;
 
-    const mode =
-      rawMode === ANALYSIS_MODE.DEEP ? ANALYSIS_MODE.DEEP : ANALYSIS_MODE.SIMPLE;
+    const mode = normalizeAnalysisMode(rawMode);
 
     if (!deviceId) {
       return NextResponse.json(
@@ -56,9 +56,10 @@ export async function POST(request) {
     }
 
     const hasImages = images && images.length > 0;
-    const memoTrim = mode === ANALYSIS_MODE.SIMPLE ? "" : (memo || "").trim();
+    const memoTrim =
+      mode === ANALYSIS_MODE.FREE ? "" : (memo || "").trim();
 
-    if (!hasImages && mode === ANALYSIS_MODE.SIMPLE) {
+    if (!hasImages && mode === ANALYSIS_MODE.FREE) {
       return NextResponse.json(
         {
           success: false,
@@ -76,9 +77,9 @@ export async function POST(request) {
           success: false,
           error: "PAYMENT_REQUIRED",
           message:
-            mode === ANALYSIS_MODE.DEEP
-              ? "심층 분석은 결제 후 이용할 수 있어요"
-              : "무료 간단 분석 횟수를 초과했습니다",
+            mode === ANALYSIS_MODE.PREMIUM
+              ? "프리미엄 리포트는 결제 후 이용할 수 있어요"
+              : "무료 빠른 추정 횟수를 모두 사용했어요. 프리미엄 탭에서 결제 후 이용해 주세요",
           freeCount: { used: count, remaining: Math.max(0, FREE_LIMIT - count) },
         },
         { status: 402 },

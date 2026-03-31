@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS analyses (
   image_count INTEGER DEFAULT 0,
   is_paid BOOLEAN DEFAULT false,
   payment_id TEXT,
-  analysis_mode VARCHAR(10) DEFAULT 'simple',
+  analysis_mode VARCHAR(10) DEFAULT 'free',
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -40,9 +40,9 @@ CREATE INDEX IF NOT EXISTS idx_analyses_profile_id ON analyses(profile_id);
 -- 2-1. 기존 DB 호환: 예전 스크립트로만 만들어진 analyses에도 analysis_mode 추가
 -- (CREATE TABLE IF NOT EXISTS 는 "이미 테이블이 있으면" 정의를 갱신하지 않으므로 필요)
 ALTER TABLE analyses
-  ADD COLUMN IF NOT EXISTS analysis_mode VARCHAR(10) DEFAULT 'simple';
+  ADD COLUMN IF NOT EXISTS analysis_mode VARCHAR(10) DEFAULT 'free';
 
-COMMENT ON COLUMN analyses.analysis_mode IS 'simple: 무료 간단, deep: 유료 심층';
+COMMENT ON COLUMN analyses.analysis_mode IS 'free: 무료 빠른 추정, premium: 유료 프리미엄 리포트 (레거시 simple/deep 호환은 앱에서 매핑)';
 
 -- 3. payments: 포트원 결제 기록
 CREATE TABLE IF NOT EXISTS payments (

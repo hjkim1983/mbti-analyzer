@@ -1,31 +1,31 @@
-# 🤖 MBTI 분석 웹앱 개발 및 분석 지침 (Bkit 통합본)
-
-## 1. 프레임워크 및 개발 원칙 (Bkit 표준)
-* **표준 준수**: 이 프로젝트는 `.cursor/skills/bkit`에 정의된 규격과 라이브러리를 엄격히 따릅니다.
-* **PDCA 사이클**: 모든 작업은 Plan-Design-Check-Act 사이클을 기반으로 하며, 시작 전 반드시 `/pdca plan`으로 기획을 확정합니다.
-* **개발 파이프라인**: 모든 프로세스는 '9-Phase Development Pipeline' 단계에 맞춰 진행합니다.
-* **품질 검증**: 코드 작성 후 Evaluator-Optimizer 패턴을 사용하여 품질을 검증합니다.
-
-## 2. 핵심 서비스 워크플로우 (Business Logic)
-모든 개발은 아래의 사용자 여정을 순차적으로 따르도록 구현합니다:
-1. **데이터 입력**: 카톡 캡처 업로드, 분석 대상 이름(`targetName`), **심층 탭에서만** 메모(`memo`)를 입력합니다. **간단 탭**은 이미지 최대 3장·메모 미사용.
-2. **무료 횟수 조회 (Supabase)**: 마운트 시 및 분석 전 서버에서 `profiles.analysis_count` 기준으로 조회합니다. 프로필이 없으면 **남은 무료 횟수 = 간단 모드 상한**으로 표시합니다.
-3. **분기 처리 (간단 vs 심층 · Free vs Paid)**:
-   - **심층 모드**: 항상 포트원 결제 후 분석 (`requiresPayment` = true).
-   - **간단 모드**: 누적 분석 횟수가 **무료 상한(현재 5회) 미만**이면 결제 없이 분석; **상한 이상**이면 포트원 결제 후 분석.
-4. **AI 정밀 분석**: `mbti_skills.md` 지침에 따라 **Gemini**(`gemini-2.5-flash`)를 호출하고, 결과를 `analyses`에 저장합니다(`analysis_mode`: `simple` | `deep`).
-5. **결과 출력**: `loadingSteps` 애니메이션 종료 후 최종 보고서를 렌더링합니다.
-
-## 3. 분석 에이전트 및 디자인 지침
-* **분석 기준**: 루트의 `mbti_skills.md` 가이드라인을 최우선 순위로 준수합니다.
-* **통합 이미지 처리**: AI 멀티모달로 이미지에서 대화([A])와 프로필([B])을 스스로 구분해 분석합니다.
-* **가중치**: 이미지+메모 조합에 따라 `src/lib/gemini.js`의 `buildUserParts`와 동일한 비율(대화/프로필/메모)을 유지합니다. 간단 모드에서는 메모를 보내지 않습니다.
-* **디자인**: `src/components/` + `globals.css` 글래스모피즘을 기준으로 하며, 참고용 원본은 루트 `kakao-mbti-scanner.jsx`입니다.
-
-## 4. 기술, 보안 및 자동화 규칙
-* **기술 스택**: Next.js 15 (App Router), Tailwind CSS 4, Supabase JS v2, 포트원 브라우저 SDK.
-* **보안**: 이미지는 Base64로 API에만 전달하고 **영구 저장하지 않습니다**. Gemini 키는 서버 우선(`GEMINI_API_KEY`), 클라이언트 폴백 키 사용 시 노출에 유의.
-* **확장성**: 향후 **사주(Saju)** 기능을 위해 `profiles` 테이블에 `birth_date`, `birth_time` 컬럼을 유지합니다.
-* **DB 스키마 단일 소스**: 루트 `supabase-schema.sql`(RLS `DROP POLICY IF EXISTS` 후 생성, `increment_analysis_count` RPC 포함)을 Supabase SQL Editor에 적용합니다.
-* **Git 자동 커밋**: 작업 완료 후 한글 커밋 메시지로 커밋합니다. (예: `C:\Users\User\users\scripts\git-auto.sh "작업 요약"` 또는 프로젝트 `git-auto.sh`)
-
+# 🤖 MBTI 분석 웹앱 개발 및 분석 지침 (Bkit 통합본)
+
+## 1. 프레임워크 및 개발 원칙 (Bkit 표준)
+* **표준 준수**: 이 프로젝트는 `.cursor/skills/bkit`에 정의된 규격과 라이브러리를 엄격히 따릅니다.
+* **PDCA 사이클**: 모든 작업은 Plan-Design-Check-Act 사이클을 기반으로 하며, 시작 전 반드시 `/pdca plan`으로 기획을 확정합니다.
+* **개발 파이프라인**: 모든 프로세스는 '9-Phase Development Pipeline' 단계에 맞춰 진행합니다.
+* **품질 검증**: 코드 작성 후 Evaluator-Optimizer 패턴을 사용하여 품질을 검증합니다.
+
+## 2. 핵심 서비스 워크플로우 (Business Logic)
+모든 개발은 아래의 사용자 여정을 순차적으로 따르도록 구현합니다:
+1. **데이터 입력**: 카톡 캡처 업로드, 분석 대상 이름(`targetName`), **Premium 탭에서만** 메모(`memo`, 선택). **Free 탭**은 캡처만 최대 3장.
+2. **무료 횟수 조회 (Supabase)**: 마운트 시 및 분석 전 서버에서 `profiles.analysis_count` 기준으로 조회합니다. 프로필이 없으면 **남은 무료 횟수 = Free 상한**으로 표시합니다.
+3. **분기 처리 (Free vs Premium)**:
+   - **Premium**: 항상 포트원 결제 후 분석 (`requiresPayment` = true). 메모는 선택.
+   - **Free**: 누적 분석 횟수가 **무료 상한(현재 3회) 미만**이면 결제 없이 분석; **상한 이상**이면 Premium 탭으로 유도 후 결제.
+4. **AI 분석**: Free는 **짧은 JSON 전용 호출**(티저·요약), Premium은 **풀 리포트 JSON** 별도 호출. `mbti_skills.md` 지침 준수. 결과는 `analyses`에 저장(`analysis_mode`: `free` | `premium`, 레거시 `simple`/`deep`은 앱에서 매핑).
+5. **결과 출력**: `loadingSteps` 애니메이션 종료 후 최종 보고서를 렌더링합니다.
+
+## 3. 분석 에이전트 및 디자인 지침
+* **분석 기준**: 루트의 `mbti_skills.md` 가이드라인을 최우선 순위로 준수합니다.
+* **통합 이미지 처리**: AI 멀티모달로 이미지에서 대화([A])와 프로필([B])을 스스로 구분해 분석합니다.
+* **가중치**: 이미지+메모 조합에 따라 `src/lib/gemini.js`의 Premium 경로와 동일한 비율(대화/프로필/메모)을 유지합니다. Free 모드에서는 메모를 보내지 않습니다.
+* **디자인**: `src/components/` + `globals.css` 글래스모피즘을 기준으로 하며, 참고용 원본은 루트 `kakao-mbti-scanner.jsx`입니다.
+
+## 4. 기술, 보안 및 자동화 규칙
+* **기술 스택**: Next.js 15 (App Router), Tailwind CSS 4, Supabase JS v2, 포트원 브라우저 SDK.
+* **보안**: 이미지는 Base64로 API에만 전달하고 **영구 저장하지 않습니다**. Gemini 키는 서버 우선(`GEMINI_API_KEY`), 클라이언트 폴백 키 사용 시 노출에 유의.
+* **확장성**: 향후 **사주(Saju)** 기능을 위해 `profiles` 테이블에 `birth_date`, `birth_time` 컬럼을 유지합니다.
+* **DB 스키마 단일 소스**: 루트 `supabase-schema.sql`(RLS `DROP POLICY IF EXISTS` 후 생성, `increment_analysis_count` RPC 포함)을 Supabase SQL Editor에 적용합니다.
+* **Git 자동 커밋**: 작업 완료 후 한글 커밋 메시지로 커밋합니다. (예: `C:\Users\User\users\scripts\git-auto.sh "작업 요약"` 또는 프로젝트 `git-auto.sh`)
+

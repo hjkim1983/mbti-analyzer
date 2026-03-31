@@ -8,7 +8,7 @@ export default function LoadingScreen({
   isMulti,
   hasMemo,
   imageCount,
-  mode = ANALYSIS_MODE.SIMPLE,
+  mode = ANALYSIS_MODE.FREE,
 }) {
   const { steps, messages, icons } = getLoadingSteps(
     isMulti,

@@ -1,7 +1,10 @@
 "use client";
 
 import GlassCard from "./GlassCard";
-import { ANALYSIS_MODE } from "@/lib/analysis-tier";
+import {
+  ANALYSIS_MODE,
+  normalizeAnalysisMode,
+} from "@/lib/analysis-tier";
 
 export default function ResultScreen({
   result,
@@ -10,8 +13,8 @@ export default function ResultScreen({
   isMulti,
   hasMemo,
   onReset,
-  analysisMode = ANALYSIS_MODE.SIMPLE,
-  onGoDeep,
+  analysisMode = ANALYSIS_MODE.FREE,
+  onGoPremium,
 }) {
   if (!result) return null;
 
@@ -28,9 +31,20 @@ export default function ResultScreen({
     tags,
     conflicts,
     profile,
+    summary,
+    teaserBullets,
+    lockedPreview,
+    tier,
   } = result;
 
-  const isDeep = analysisMode === ANALYSIS_MODE.DEEP;
+  const mode = normalizeAnalysisMode(analysisMode);
+  const isPremium =
+    mode === ANALYSIS_MODE.PREMIUM ||
+    tier === "premium";
+  const showFreeTeaser =
+    !isPremium &&
+    summary &&
+    typeof summary.headline === "string";
 
   return (
     <div className="pt-6">
@@ -39,15 +53,15 @@ export default function ResultScreen({
         <span
           className="text-xs font-bold px-4 py-1.5 rounded-full shadow-sm"
           style={{
-            background: isDeep
+            background: isPremium
               ? "linear-gradient(90deg,rgba(162,155,254,0.5),rgba(124,58,237,0.25))"
               : "linear-gradient(90deg,rgba(254,229,0,0.8),rgba(162,155,254,0.3))",
             color: "#333",
           }}
         >
-          {isDeep
-            ? "✨ 유료 · 심층 분석 결과"
-            : "🎁 무료 · 간단 추측 결과"}
+          {isPremium
+            ? "✨ Premium · 심층 리포트"
+            : "🎁 Free · 빠른 추정"}
         </span>
       </div>
 
@@ -108,7 +122,45 @@ export default function ResultScreen({
         </div>
       </div>
 
-      {/* 지표별 분석 */}
+      {/* Free 전용: 요약·티저·잠금 미리보기 */}
+      {showFreeTeaser && (
+        <GlassCard animate delay={2} className="mb-4">
+          <h3 className="font-extrabold text-gray-900 mb-2 text-sm">
+            {summary.headline}
+          </h3>
+          {summary.oneLiner && (
+            <p className="text-sm text-gray-600 mb-4 leading-relaxed">
+              {summary.oneLiner}
+            </p>
+          )}
+          {teaserBullets?.length > 0 && (
+            <ul className="space-y-2 mb-4">
+              {teaserBullets.map((b, i) => (
+                <li key={i} className="text-xs text-gray-700 flex gap-2">
+                  <span className="text-amber-500 font-bold">•</span>
+                  <span>{typeof b === "object" ? JSON.stringify(b) : String(b)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {lockedPreview?.labels?.length > 0 && (
+            <div
+              className="rounded-2xl p-3 border border-dashed border-amber-200 bg-amber-50/40"
+            >
+              <p className="text-[11px] font-bold text-amber-900 mb-2">
+                🔒 Premium에서 열리는 항목
+              </p>
+              <ul className="text-[11px] text-amber-800 space-y-1">
+                {lockedPreview.labels.map((lb, i) => (
+                  <li key={i}>· {lb}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </GlassCard>
+      )}
+
+      {/* 지표별 분석 — 프리미엄 또는 레거시 풀 JSON */}
       {indicators && (
         <GlassCard animate delay={2} className="mb-4">
           <h3 className="font-extrabold text-gray-900 mb-4 flex items-center gap-2">
@@ -179,7 +231,7 @@ export default function ResultScreen({
       )}
 
       {/* 대화 + 프로필 요약 (종합 모드) */}
-      {isMulti && highlights && (
+      {isMulti && highlights && Object.keys(highlights).length > 0 && (
         <div className="grid grid-cols-2 gap-3 mb-4 anim-slide-up delay-2">
           <GlassCard className="!p-4">
             <p className="text-xs font-extrabold text-gray-700 mb-2">
@@ -349,22 +401,22 @@ export default function ResultScreen({
         </p>
       </div>
 
-      {/* 간단 결과 → 심층 유도 */}
-      {!isDeep && typeof onGoDeep === "function" && (
+      {/* Free → Premium 유도 */}
+      {!isPremium && typeof onGoPremium === "function" && (
         <div className="mb-4 anim-slide-up delay-5">
           <button
             type="button"
-            onClick={onGoDeep}
+            onClick={onGoPremium}
             className="w-full py-4 rounded-2xl font-extrabold text-sm text-gray-900 shadow-lg active:scale-[0.99] transition-transform border-2 border-purple-200"
             style={{
               background:
                 "linear-gradient(135deg, rgba(162,155,254,0.35), rgba(167,139,250,0.2))",
             }}
           >
-            💎 심층 분석으로 이어가기 (최대 10장 + 텍스트)
+            💎 Premium 리포트로 이어가기 (최대 10장 · 메모 선택)
           </button>
           <p className="text-[11px] text-center text-gray-400 mt-2">
-            유료 탭으로 이동해 말투·행동을 입력하면 더 구체적인 결과를 받을 수 있어요
+            4축 상세·관계·소통 해석 등 전체 리포트는 Premium에서 확인할 수 있어요
           </p>
         </div>
       )}
