@@ -75,12 +75,20 @@ export async function POST(request) {
       .maybeSingle();
 
     // 5. payments 테이블에 기록
-    await supabase.from("payments").insert({
+    const { error: insertError } = await supabase.from("payments").insert({
       profile_id: profile?.id || null,
       portone_payment_id: paymentId,
       amount: EXPECTED_AMOUNT,
       status: "paid",
     });
+
+    if (insertError) {
+      console.error("Supabase payments insert:", insertError);
+      return NextResponse.json(
+        { success: false, message: "결제 기록 저장에 실패했습니다" },
+        { status: 500 },
+      );
+    }
 
     return NextResponse.json({
       success: true,

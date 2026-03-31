@@ -41,11 +41,13 @@ export default function useAnalysis() {
     (async () => {
       try {
         const deviceId = await getDeviceId();
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("profiles")
           .select("analysis_count")
           .eq("device_id", deviceId)
           .maybeSingle();
+
+        if (error) throw error;
 
         if (data) {
           const used = Math.max(
@@ -56,9 +58,12 @@ export default function useAnalysis() {
             used,
             remaining: Math.max(0, FREE_LIMIT - used),
           });
+        } else {
+          // 아직 profiles 행이 없음 → 서버에서 첫 분석 시 생성되므로 UI는 전체 무료로 표시
+          setFreeCount({ used: 0, remaining: FREE_LIMIT });
         }
       } catch {
-        // 첫 사용자
+        // 네트워크/설정 오류 시에는 표시 생략(분석 API에서 다시 조회)
       }
     })();
   }, []);
