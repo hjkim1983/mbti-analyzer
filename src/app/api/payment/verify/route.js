@@ -4,6 +4,17 @@ import { supabase } from "@/lib/supabase";
 const PORTONE_API_SECRET = process.env.PORTONE_API_SECRET;
 const EXPECTED_AMOUNT = 1900;
 
+/** 스키마에 컬럼 없음(PGRST204) — Supabase에 마이그레이션 미적용 */
+const MISSING_COLUMN_HINT =
+  "DB에 payments.portone_payment_id 컬럼이 없습니다. 연결된 Supabase 프로젝트의 SQL Editor에서 supabase-migration-payments-portone-payment-id.sql 을 실행한 뒤, 필요하면 NOTIFY pgrst 로 스키마를 다시 로드하세요.";
+
+function isMissingPortoneColumnError(err) {
+  return (
+    err?.code === "PGRST204" &&
+    String(err?.message ?? "").includes("portone_payment_id")
+  );
+}
+
 /** PortOne V2 결제 단건 조회 응답에서 결제 객체·금액·상태 정규화 */
 function parsePortonePaymentPayload(json) {
   const payment =
@@ -61,11 +72,19 @@ export async function POST(request) {
     }
 
     // 1. 중복 결제 확인
-    const { data: existing } = await supabase
+    const { data: existing, error: dupErr } = await supabase
       .from("payments")
       .select("id")
       .eq("portone_payment_id", paymentId)
       .maybeSingle();
+
+    if (dupErr && isMissingPortoneColumnError(dupErr)) {
+      console.error("Supabase payments (중복 조회):", dupErr);
+      return NextResponse.json(
+        { success: false, message: MISSING_COLUMN_HINT },
+        { status: 503 },
+      );
+    }
 
     // 이미 검증·기록된 결제는 멱등 성공 처리 (재시도·중복 요청 시에도 분석 단계로 진행)
     if (existing) {
@@ -204,6 +223,13 @@ export async function POST(request) {
             alreadyRecorded: true,
           },
         });
+      }
+      if (isMissingPortoneColumnError(insertError)) {
+        console.error("Supabase payments insert:", insertError);
+        return NextResponse.json(
+          { success: false, message: MISSING_COLUMN_HINT },
+          { status: 503 },
+        );
       }
       console.error("Supabase payments insert:", insertError);
       return NextResponse.json(
