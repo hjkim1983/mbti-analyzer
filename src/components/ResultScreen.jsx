@@ -401,28 +401,8 @@ export default function ResultScreen({
         </p>
       </div>
 
-      {/* Free → Premium 유도 */}
-      {!isPremium && typeof onGoPremium === "function" && (
-        <div className="mb-4 anim-slide-up delay-5">
-          <button
-            type="button"
-            onClick={onGoPremium}
-            className="w-full py-4 rounded-2xl font-extrabold text-sm text-gray-900 shadow-lg active:scale-[0.99] transition-transform border-2 border-purple-200"
-            style={{
-              background:
-                "linear-gradient(135deg, rgba(162,155,254,0.35), rgba(167,139,250,0.2))",
-            }}
-          >
-            💎 Premium 리포트로 이어가기 (최대 10장 · 메모 선택)
-          </button>
-          <p className="text-[11px] text-center text-gray-400 mt-2">
-            4축 상세·관계·소통 해석 등 전체 리포트는 Premium에서 확인할 수 있어요
-          </p>
-        </div>
-      )}
-
-      {/* 액션 버튼 */}
-      <div className="flex gap-3 anim-slide-up delay-6">
+      {/* 액션 버튼 — 프리미엄 유도보다 위: 다시 분석 / 공유 */}
+      <div className="flex gap-3 anim-slide-up delay-6 mb-6">
         <button
           onClick={onReset}
           className="flex-1 py-4 rounded-2xl font-bold text-gray-700 glass border border-white/40 active:scale-95 transition-transform text-sm"
@@ -450,6 +430,52 @@ export default function ResultScreen({
           결과 공유하기 🔗
         </button>
       </div>
+
+      {/* Free → Premium 유도 (화면 최하단: 후킹 멘트 → CTA) */}
+      {!isPremium && typeof onGoPremium === "function" && (
+        <div className="anim-slide-up delay-6 pt-2 border-t border-white/25">
+          <div
+            className="rounded-2xl p-4 mb-4"
+            style={{
+              background:
+                "linear-gradient(145deg, rgba(124,58,237,0.08), rgba(254,229,0,0.12))",
+              border: "1px solid rgba(124,58,237,0.15)",
+            }}
+          >
+            <p className="text-xs font-extrabold text-gray-800 mb-2">
+              더 깊이 알고 싶으신가요?
+            </p>
+            <p className="text-sm text-gray-700 leading-relaxed mb-1.5">
+              지금 보신 건 <span className="font-bold text-amber-800">빠른 추정</span>
+              이에요. 말투·대화를 <span className="font-bold">4축으로 풀어 쓰고</span>,
+              관계·소통까지 짚는 <span className="font-bold text-purple-800">심층 리포트</span>가
+              필요하시다면 아래 버튼을 눌러 주세요.
+            </p>
+            <p className="text-[11px] text-gray-500 leading-relaxed">
+              더 정확하고 자세한 분석을 원하시면{" "}
+              <span className="font-semibold text-gray-700">
+                프리미엄 리포트
+              </span>
+              로 이어가실 수 있어요. (캡처 최대 10장 · 메모 선택 입력)
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onGoPremium}
+            className="w-full py-4 rounded-2xl font-extrabold text-sm text-gray-900 shadow-lg active:scale-[0.99] transition-transform border-2 border-purple-200"
+            style={{
+              background:
+                "linear-gradient(135deg, rgba(162,155,254,0.45), rgba(167,139,250,0.28))",
+            }}
+          >
+            💎 Premium 리포트로 이어가기
+          </button>
+          <p className="text-[11px] text-center text-gray-400 mt-2.5 px-1">
+            4축 상세 근거 · 관계·소통 해석 등 전체 리포트는 Premium에서 확인할 수
+            있어요
+          </p>
+        </div>
+      )}
     </div>
   );
 }
