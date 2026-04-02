@@ -45,9 +45,12 @@ ALTER TABLE analyses
 COMMENT ON COLUMN analyses.analysis_mode IS 'free: 무료 빠른 추정, premium: 유료 프리미엄 리포트 (레거시 simple/deep 호환은 앱에서 매핑)';
 
 -- 3. payments: 포트원 결제 기록
+-- portone_payment_id: 포트원 V2 결제 고유 ID (중복 방지·조회 기준)
+-- portone_payment: 레거시/일부 DB 호환 — 앱은 portone_payment_id 와 동일 문자열로 채움
 CREATE TABLE IF NOT EXISTS payments (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   profile_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  portone_payment TEXT,
   portone_payment_id TEXT NOT NULL UNIQUE,
   amount INTEGER NOT NULL,
   status VARCHAR(20) NOT NULL,

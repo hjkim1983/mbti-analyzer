@@ -4,14 +4,24 @@ import { supabase } from "@/lib/supabase";
 const PORTONE_API_SECRET = process.env.PORTONE_API_SECRET;
 const EXPECTED_AMOUNT = 1900;
 
-/** 스키마에 컬럼 없음(PGRST204) — Supabase에 마이그레이션 미적용 */
+/** 포트원 V2 결제 고유 ID (중복 검사·UNIQUE 기준) */
+const PAYMENTS_PORTONE_ID_COLUMN = "portone_payment_id";
+
+/**
+ * 일부 DB에만 있는 레거시 컬럼. NOT NULL 이면 `portone_payment_id` 와 동일 값으로 채움.
+ */
+const PAYMENTS_PORTONE_LEGACY_COLUMN = "portone_payment";
+
+/** 스키마에 결제 ID 컬럼 없음(PGRST204) — Supabase 마이그레이션 미적용 */
 const MISSING_COLUMN_HINT =
-  "DB에 payments.portone_payment_id 컬럼이 없습니다. 연결된 Supabase 프로젝트의 SQL Editor에서 supabase-migration-payments-portone-payment-id.sql 을 실행한 뒤, 필요하면 NOTIFY pgrst 로 스키마를 다시 로드하세요.";
+  `DB에 payments.${PAYMENTS_PORTONE_ID_COLUMN} 컬럼이 없습니다. supabase-schema.sql 또는 마이그레이션 SQL을 연결된 Supabase 프로젝트에서 실행한 뒤 NOTIFY pgrst 로 스키마를 다시 로드하세요.`;
 
 function isMissingPortoneColumnError(err) {
+  if (err?.code !== "PGRST204") return false;
+  const msg = String(err?.message ?? "");
   return (
-    err?.code === "PGRST204" &&
-    String(err?.message ?? "").includes("portone_payment_id")
+    msg.includes("portone_payment_id") ||
+    msg.includes(PAYMENTS_PORTONE_LEGACY_COLUMN)
   );
 }
 
@@ -75,7 +85,7 @@ export async function POST(request) {
     const { data: existing, error: dupErr } = await supabase
       .from("payments")
       .select("id")
-      .eq("portone_payment_id", paymentId)
+      .eq(PAYMENTS_PORTONE_ID_COLUMN, paymentId)
       .maybeSingle();
 
     if (dupErr && isMissingPortoneColumnError(dupErr)) {
@@ -202,10 +212,11 @@ export async function POST(request) {
       .eq("device_id", deviceId)
       .maybeSingle();
 
-    // 5. payments 테이블에 기록
+    // 5. payments 테이블에 기록 — portone_payment_id 가 식별자, portone_payment 는 레거시 NOT NULL 대비 동일 값
     const { error: insertError } = await supabase.from("payments").insert({
       profile_id: profile?.id || null,
-      portone_payment_id: paymentId,
+      [PAYMENTS_PORTONE_ID_COLUMN]: paymentId,
+      [PAYMENTS_PORTONE_LEGACY_COLUMN]: paymentId,
       amount: EXPECTED_AMOUNT,
       status: "paid",
     });
