@@ -28,10 +28,28 @@ export default function usePayment() {
         }),
       });
 
-      const verifyData = await verifyRes.json();
+      let verifyData;
+      try {
+        verifyData = await verifyRes.json();
+      } catch {
+        setError("결제 검증 응답을 읽지 못했습니다. 네트워크를 확인해 주세요.");
+        return null;
+      }
+
+      if (!verifyRes.ok) {
+        setError(
+          verifyData?.message ||
+            `결제 검증 요청 실패 (${verifyRes.status}). 잠시 후 다시 시도해 주세요.`,
+        );
+        return null;
+      }
 
       if (!verifyData.success || !verifyData.data?.verified) {
-        setError("결제 검증에 실패했습니다. 다시 시도해주세요.");
+        setError(
+          verifyData.data?.message ||
+            verifyData.message ||
+            "결제는 되었지만 검증에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+        );
         return null;
       }
 

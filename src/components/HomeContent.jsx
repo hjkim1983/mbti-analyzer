@@ -121,7 +121,8 @@ export default function HomeContent() {
       <Header freeRemaining={freeRemaining} />
 
       <main className="max-w-lg mx-auto px-4 pb-24">
-        {(analysis.error || payment.error) && analysis.stage === "main" && (
+        {(analysis.error || payment.error) &&
+          (analysis.stage === "main" || analysis.stage === "payment") && (
           <div className="mt-4 glass-highlight rounded-2xl p-3 text-center">
             <p className="text-xs font-bold text-red-600">
               {analysis.error || payment.error}

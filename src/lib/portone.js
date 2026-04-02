@@ -32,5 +32,12 @@ export async function requestPayment(deviceId) {
     return null;
   }
 
-  return { paymentId: response.paymentId || paymentId };
+  // V2 응답은 paymentId / id / payment.id 등 필드명이 버전에 따라 다를 수 있음 — 서버 검증 GET과 동일한 ID 필요
+  const resolvedPaymentId =
+    response.paymentId ??
+    response.id ??
+    response.payment?.id ??
+    paymentId;
+
+  return { paymentId: resolvedPaymentId };
 }
