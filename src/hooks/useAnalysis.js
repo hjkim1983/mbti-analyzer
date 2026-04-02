@@ -176,9 +176,13 @@ export default function useAnalysis() {
         (isPremiumTab ? ANALYSIS_MODE.PREMIUM : ANALYSIS_MODE.FREE);
 
       const total = images.length;
+      const imageTier =
+        mode === ANALYSIS_MODE.PREMIUM ? "premium" : "free";
       const base64Images = await Promise.all(
         images.map(async (img) => {
-          const converted = await fileToBase64(img.file, total);
+          const converted = await fileToBase64(img.file, total, undefined, {
+            tier: imageTier,
+          });
           return {
             base64Data: converted.base64Data,
             mimeType: converted.mimeType,

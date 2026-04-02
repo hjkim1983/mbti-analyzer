@@ -6,6 +6,9 @@ const MODEL = "gemini-2.5-flash";
 const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 const TIMEOUT_MS = 55000;
 
+/** 프리미엄: 스키마·근거 개수는 유지하되 상한을 두어 생성 시간·비용 완화 (잘림 방지 여유는 유지) */
+const PREMIUM_MAX_OUTPUT_TOKENS = 7680;
+
 let cachedSkillPrompt = null;
 
 function getSkillPrompt() {
@@ -21,23 +24,18 @@ function getSkillPrompt() {
   return cachedSkillPrompt;
 }
 
-/** Premium: 풀 리포트 — 지표·하이라이트·traits 등 */
+/** Premium: 풀 리포트 — 지표·하이라이트·traits 등 (문구는 압축, 규칙은 동일) */
 function buildPremiumSystemPrompt() {
   const skill = getSkillPrompt();
-  return `당신은 입력 데이터를 통합 분석하여 MBTI를 추론하는 전문 심리언어학 분석 에이전트입니다.
+  return `당신은 카카오톡 캡처·관찰 텍스트를 통합해 MBTI를 추론하는 전문 에이전트입니다.
 
 ${skill}
 
-## 분석 깊이 (프리미엄)
-이번 요청은 **유료 프리미엄 리포트**입니다. 이미지와 관찰자가 입력한 텍스트(선택)를 반영하여 **구체적으로** 추론하세요.
-지표별 evidence는 각각 **3개 이상**, highlights·traits는 풍부하게 작성하세요.
+## 프리미엄
+유료 리포트입니다. 이미지·메모(선택)를 반영해 구체적으로 추론하세요. 지표(EI/SN/TF/JP)별 evidence **각 3개 이상**, highlights·traits는 풍부하게.
 
-## 출력 규칙
-1. 반드시 아래 JSON 스키마에 맞춰 응답하세요.
-2. JSON 외의 텍스트를 포함하지 마세요.
-3. evidence는 한국어로 구체적 근거를 작성하세요 (지표당 3개+).
-4. conflicts 배열에는 지표 간 충돌이 있을 경우 설명을 포함하세요.
-5. 확신도(confidence)는 신뢰도 등급 기준을 따르세요.`;
+## 출력
+JSON만. evidence는 한국어 구체 근거. conflicts는 충돌 있을 때만. confidence·confidenceLevel은 가이드의 신뢰도 기준을 따르세요.`;
 }
 
 /** Free: 짧은 맛보기 전용 — 토큰 절약, 풀 지표 리포트 생성 금지 */
@@ -62,10 +60,8 @@ function buildPremiumUserParts({ targetName, memo, images }) {
   const parts = [];
   parts.push({
     text:
-      `## 분석 대상\n이름: ${targetName || "미지정"}\n\n` +
-      `프리미엄 모드: 이미지와 관찰 텍스트(있으면)를 반영해 구체적으로 분석합니다.\n\n` +
-      `이 사람의 MBTI를 아래 입력 데이터를 기반으로 분석해주세요.\n` +
-      `이미지에서 대화([A])와 프로필([B])을 스스로 분류하여 분석하세요.`,
+      `## 분석 대상: ${targetName || "미지정"}\n` +
+      `이미지에서 [A] 대화·[B] 프로필을 구분해 이 사람의 MBTI를 분석하세요.`,
   });
 
   for (const img of images) {
@@ -97,32 +93,19 @@ function buildPremiumUserParts({ targetName, memo, images }) {
       "가중치: [C] 행동/성격 텍스트 100% (단, 신뢰도 LOW로 고정)";
   }
 
-  parts.push({ text: `\n## 분석 가중치\n${weightGuide}` });
+  parts.push({ text: `\n## 가중치\n${weightGuide}` });
 
   parts.push({
-    text: `\n## 출력 형식
-아래 JSON 스키마에 맞춰 응답하세요. JSON만 출력하세요.
-{
-  "tier": "premium",
-  "mbtiType": "XXXX",
-  "confidence": 0-100,
-  "confidenceLevel": "HIGH|MEDIUM|LOW",
-  "indicators": {
-    "EI": {"result":"I 또는 E","score":0-100,"confidence":0-100,"evidence":["근거1","근거2","근거3"]},
-    "SN": {"result":"S 또는 N","score":0-100,"confidence":0-100,"evidence":["근거1","근거2","근거3"]},
-    "TF": {"result":"T 또는 F","score":0-100,"confidence":0-100,"evidence":["근거1","근거2","근거3"]},
-    "JP": {"result":"J 또는 P","score":0-100,"confidence":0-100,"evidence":["근거1","근거2","근거3"]}
-  },
-  "highlights": {
-    "chatPatterns": ["특징1","특징2","특징3","특징4"],
-    "profileAnalysis": "프로필 분석 요약 문자열 또는 null",
-    "behaviorAnalysis": "행동 분석 요약 문자열 또는 null"
-  },
-  "traits": ["특성1","특성2","특성3","특성4"],
-  "tags": ["#태그1","#태그2","#태그3"],
-  "conflicts": [],
-  "profile": {"mood":"분위기","status":"상태메시지 스타일","bg":"배경 취향","score":0-100} 또는 null
-}`,
+    text: `## 출력 (JSON만)
+{"tier":"premium","mbtiType":"XXXX","confidence":0-100,"confidenceLevel":"HIGH|MEDIUM|LOW",
+"indicators":{
+"EI":{"result":"I|E","score":0-100,"confidence":0-100,"evidence":["한국어 근거≥3"]},
+"SN":{"result":"S|N","score":0-100,"confidence":0-100,"evidence":["≥3"]},
+"TF":{"result":"T|F","score":0-100,"confidence":0-100,"evidence":["≥3"]},
+"JP":{"result":"J|P","score":0-100,"confidence":0-100,"evidence":["≥3"]}},
+"highlights":{"chatPatterns":[4개],"profileAnalysis":null,"behaviorAnalysis":null},
+"traits":[4개],"tags":[],"conflicts":[],
+"profile":{"mood":"","status":"","bg":"","score":0-100}|null}`,
   });
 
   return parts;
@@ -329,10 +312,10 @@ async function callGeminiPremium({ targetName, memo, images }) {
       },
     ],
     generationConfig: {
-      temperature: 0.3,
-      topP: 0.8,
+      temperature: 0.28,
+      topP: 0.78,
       topK: 40,
-      maxOutputTokens: 8192,
+      maxOutputTokens: PREMIUM_MAX_OUTPUT_TOKENS,
       responseMimeType: "application/json",
       candidateCount: 1,
     },
