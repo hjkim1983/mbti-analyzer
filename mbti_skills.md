@@ -536,4 +536,18 @@ INTP 가능성도 배제할 수 없음.
 
 ---
 
+## 프리미엄 리포트 품질 기준 (웹앱 유료)
+
+유료 요청 시 아래를 **반드시** 충족하는 JSON을 출력합니다.
+
+1. **4축 지표**: EI/SN/TF/JP 각각 `evidence` **3개 이상**, 한국어로 **캡처·메모와 연결된 구체 문장**.
+2. **highlights / traits**: 대화 패턴·프로필·행동 요약이 **서로 다른 각도**를 덮도록 작성.
+3. **relationshipAndCommunication**: 연애·친구 등 **관계 맥락**에서의 소통 스타일과 상대가 알면 좋은 팁.
+4. **workAndRoutine**: 마감·협업·피드백 등 **일·학습**에서의 스타일.
+5. **cautionAndMisread**: 이 입력만으로 **오판되기 쉬운 요인**(이모티콘만, 짧은 캡처 등).
+6. **alternativeTypes**: 1순위와 **겹칠 수 있는 다른 유형**과 **구분 근거**.
+7. **quotedInsights**: 대화에서 **짧은 인용 0~2개** + 해석(실명·연락처는 가명·삭제).
+
+---
+
 *이 문서는 Myers-Briggs Type Indicator 핸드북의 이론적 프레임워크와 Tausczik & Pennebaker (2010), "The Psychological Meaning of Words: LIWC and Computerized Text Analysis Methods", Journal of Language and Social Psychology 29(1), 24–54에 기반하여 작성되었습니다.*

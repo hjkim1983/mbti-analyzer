@@ -37,6 +37,11 @@ export default function ResultScreen({
     lockedPreview,
     tier,
     mbtiRankings = [],
+    relationshipAndCommunication,
+    workAndRoutine,
+    cautionAndMisread,
+    alternativeTypes,
+    quotedInsights = [],
   } = result;
 
   const mode = normalizeAnalysisMode(analysisMode);
@@ -276,8 +281,11 @@ export default function ResultScreen({
                   </div>
                   {ind.evidence && ind.evidence.length > 0 && (
                     <div className="mt-1.5 space-y-0.5">
-                      {ind.evidence.slice(0, 2).map((e, i) => (
-                        <p key={i} className="text-xs text-gray-400 pl-1">
+                      {(isPremium
+                        ? ind.evidence
+                        : ind.evidence.slice(0, 2)
+                      ).map((e, i) => (
+                        <p key={i} className="text-xs text-gray-500 pl-1 leading-relaxed">
                           • {typeof e === "object" ? JSON.stringify(e) : String(e)}
                         </p>
                       ))}
@@ -290,15 +298,109 @@ export default function ResultScreen({
         </GlassCard>
       )}
 
-      {/* 대화 + 프로필 요약 (종합 모드) */}
-      {isMulti && highlights && Object.keys(highlights).length > 0 && (
+      {/* 프리미엄: 대화 인용 하이라이트 */}
+      {isPremium && quotedInsights.length > 0 && (
+        <GlassCard animate delay={2} className="mb-4">
+          <h3 className="font-extrabold text-gray-900 mb-3 flex items-center gap-2">
+            <span
+              className="w-7 h-7 rounded-xl flex items-center justify-center text-sm"
+              style={{ background: "#E0E7FF" }}
+            >
+              💬
+            </span>
+            근거 인용 하이라이트
+          </h3>
+          <p className="text-[11px] text-gray-500 mb-3">
+            캡처 속 표현을 짧게 인용했습니다. 실명·전화번호 등은 가명 처리했을 수 있어요.
+          </p>
+          <div className="space-y-3">
+            {quotedInsights.map((q, i) => (
+              <div
+                key={i}
+                className="rounded-2xl p-3 bg-white/40 border border-white/50"
+              >
+                <p className="text-xs text-gray-800 font-medium italic mb-1">
+                  &ldquo;{q.quote}&rdquo;
+                </p>
+                {q.note && (
+                  <p className="text-[11px] text-gray-600">→ {q.note}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </GlassCard>
+      )}
+
+      {/* 프리미엄: 관계·소통 */}
+      {isPremium && relationshipAndCommunication?.summary && (
+        <GlassCard animate delay={2} className="mb-4">
+          <h3 className="font-extrabold text-gray-900 mb-3 flex items-center gap-2">
+            <span
+              className="w-7 h-7 rounded-xl flex items-center justify-center text-sm"
+              style={{ background: "#FBCFE8" }}
+            >
+              💕
+            </span>
+            관계·소통
+          </h3>
+          <p className="text-sm text-gray-700 leading-relaxed mb-3">
+            {relationshipAndCommunication.summary}
+          </p>
+          {relationshipAndCommunication.tips?.length > 0 && (
+            <ul className="space-y-1.5">
+              {relationshipAndCommunication.tips.map((t, i) => (
+                <li key={i} className="text-xs text-gray-600 flex gap-2">
+                  <span className="text-pink-500 font-bold">✓</span>
+                  <span>{t}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </GlassCard>
+      )}
+
+      {/* 프리미엄: 일·학습·협업 */}
+      {isPremium && workAndRoutine?.summary && (
+        <GlassCard animate delay={2} className="mb-4">
+          <h3 className="font-extrabold text-gray-900 mb-3 flex items-center gap-2">
+            <span
+              className="w-7 h-7 rounded-xl flex items-center justify-center text-sm"
+              style={{ background: "#BFDBFE" }}
+            >
+              💼
+            </span>
+            일·학습·협업
+          </h3>
+          <p className="text-sm text-gray-700 leading-relaxed mb-3">
+            {workAndRoutine.summary}
+          </p>
+          {workAndRoutine.tips?.length > 0 && (
+            <ul className="space-y-1.5">
+              {workAndRoutine.tips.map((t, i) => (
+                <li key={i} className="text-xs text-gray-600 flex gap-2">
+                  <span className="text-sky-600 font-bold">•</span>
+                  <span>{t}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </GlassCard>
+      )}
+
+      {/* 대화 + 프로필 요약 (종합 모드 또는 프리미엄 전체 패턴) */}
+      {(isPremium || isMulti) &&
+        highlights &&
+        Object.keys(highlights).length > 0 && (
         <div className="grid grid-cols-2 gap-3 mb-4 anim-slide-up delay-2">
           <GlassCard className="!p-4">
             <p className="text-xs font-extrabold text-gray-700 mb-2">
               💬 대화 분석
             </p>
-            {highlights.chatPatterns?.slice(0, 2).map((t) => (
-              <p key={t} className="text-xs text-gray-500 mb-1">
+            {(isPremium
+              ? highlights.chatPatterns ?? []
+              : (highlights.chatPatterns ?? []).slice(0, 2)
+            ).map((t) => (
+              <p key={String(t)} className="text-xs text-gray-500 mb-1">
                 • {t}
               </p>
             ))}
@@ -373,8 +475,34 @@ export default function ResultScreen({
         </GlassCard>
       )}
 
-      {/* 프로필 분석 상세 (종합 모드) */}
-      {isMulti && profile && (
+      {/* 프리미엄: 1순위 vs 2순위 후보 */}
+      {isPremium && alternativeTypes?.distinction?.trim() && (
+        <GlassCard animate delay={3} className="mb-4">
+          <h3 className="font-extrabold text-gray-900 mb-3 flex items-center gap-2">
+            <span
+              className="w-7 h-7 rounded-xl flex items-center justify-center text-sm"
+              style={{ background: "#DDD6FE" }}
+            >
+              🔀
+            </span>
+            1순위와 가까운 다른 후보
+          </h3>
+          {String(alternativeTypes.secondGuess || "")
+            .replace(/[^A-Za-z]/g, "")
+            .length >= 4 && (
+            <p className="text-xs font-bold text-violet-800 mb-2">
+              2순위 후보:{" "}
+              {String(alternativeTypes.secondGuess).slice(0, 4).toUpperCase()}
+            </p>
+          )}
+          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+            {alternativeTypes.distinction}
+          </p>
+        </GlassCard>
+      )}
+
+      {/* 프로필 분석 상세 (종합 모드 또는 프리미엄) */}
+      {(isPremium || isMulti) && profile && (
         <GlassCard animate delay={4} className="mb-4">
           <h3 className="font-extrabold text-gray-900 mb-4 flex items-center gap-2">
             <span
@@ -447,6 +575,28 @@ export default function ResultScreen({
               • {typeof c === "object" ? (c.description || c.indicator || JSON.stringify(c)) : String(c)}
             </p>
           ))}
+        </GlassCard>
+      )}
+
+      {/* 프리미엄: 이 입력에서의 오판·주의 포인트 */}
+      {isPremium && cautionAndMisread?.points?.length > 0 && (
+        <GlassCard animate delay={4} className="mb-4 border border-amber-200/80">
+          <h3 className="font-extrabold text-gray-900 mb-3 flex items-center gap-2">
+            <span
+              className="w-7 h-7 rounded-xl flex items-center justify-center text-sm"
+              style={{ background: "#FEF3C7" }}
+            >
+              🧭
+            </span>
+            이 분석에서 특히 주의할 점
+          </h3>
+          <ul className="space-y-1.5">
+            {cautionAndMisread.points.map((p, i) => (
+              <li key={i} className="text-xs text-amber-900 leading-relaxed">
+                • {p}
+              </li>
+            ))}
+          </ul>
         </GlassCard>
       )}
 

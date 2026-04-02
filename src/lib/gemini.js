@@ -6,8 +6,8 @@ const MODEL = "gemini-2.5-flash";
 const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 const TIMEOUT_MS = 55000;
 
-/** 프리미엄: 스키마·근거 개수는 유지하되 상한을 두어 생성 시간·비용 완화 (잘림 방지 여유는 유지) */
-const PREMIUM_MAX_OUTPUT_TOKENS = 7680;
+/** 프리미엄: 심층 필드 추가로 상한 여유 */
+const PREMIUM_MAX_OUTPUT_TOKENS = 8192;
 
 let cachedSkillPrompt = null;
 
@@ -32,10 +32,11 @@ function buildPremiumSystemPrompt() {
 ${skill}
 
 ## 프리미엄
-유료 리포트입니다. 이미지·메모(선택)를 반영해 구체적으로 추론하세요. 지표(EI/SN/TF/JP)별 evidence **각 3개 이상**, highlights·traits는 풍부하게.
+유료 리포트입니다. 지표(EI/SN/TF/JP)별 evidence **각 3개 이상**, highlights·traits는 풍부하게.
+추가 필드: **관계·소통**(relationshipAndCommunication), **일·학습·협업**(workAndRoutine), **오판·주의**(cautionAndMisread), **2순위 후보 구분**(alternativeTypes), **대화 인용+해석**(quotedInsights, 0~2개, 개인정보는 가명·짧게).
 
 ## 출력
-JSON만. evidence는 한국어 구체 근거. conflicts는 충돌 있을 때만. confidence·confidenceLevel은 가이드의 신뢰도 기준을 따르세요.`;
+JSON만. evidence·각 요약은 한국어. conflicts는 충돌 있을 때만. confidence는 가이드 기준. 빈 필드는 null 또는 빈 배열.`;
 }
 
 /** Free: 짧은 맛보기 전용 — 토큰 절약, 풀 지표 리포트 생성 금지 */
@@ -96,16 +97,20 @@ function buildPremiumUserParts({ targetName, memo, images }) {
   parts.push({ text: `\n## 가중치\n${weightGuide}` });
 
   parts.push({
-    text: `## 출력 (JSON만)
+    text: `## 출력 (JSON만, 키 누락 금지 — 없으면 null/[])
 {"tier":"premium","mbtiType":"XXXX","confidence":0-100,"confidenceLevel":"HIGH|MEDIUM|LOW",
-"indicators":{
-"EI":{"result":"I|E","score":0-100,"confidence":0-100,"evidence":["한국어 근거≥3"]},
+"indicators":{"EI":{"result":"I|E","score":0-100,"confidence":0-100,"evidence":["≥3"]},
 "SN":{"result":"S|N","score":0-100,"confidence":0-100,"evidence":["≥3"]},
 "TF":{"result":"T|F","score":0-100,"confidence":0-100,"evidence":["≥3"]},
 "JP":{"result":"J|P","score":0-100,"confidence":0-100,"evidence":["≥3"]}},
-"highlights":{"chatPatterns":[4개],"profileAnalysis":null,"behaviorAnalysis":null},
-"traits":[4개],"tags":[],"conflicts":[],
-"profile":{"mood":"","status":"","bg":"","score":0-100}|null}`,
+"highlights":{"chatPatterns":[4],"profileAnalysis":null,"behaviorAnalysis":null},
+"traits":[4],"tags":[],"conflicts":[],
+"profile":{"mood":"","status":"","bg":"","score":0-100}|null,
+"relationshipAndCommunication":{"summary":"연애·친구 맥락 2~4문장","tips":["상대가 알면 좋은 점","소통 팁"]},
+"workAndRoutine":{"summary":"일·학습·협업 2~3문장","tips":["마감/피드백 등"]},
+"cautionAndMisread":{"points":["이 입력에서 오판되기 쉬운 점 1","2"]},
+"alternativeTypes":{"secondGuess":"XXXX","distinction":"1순위와 구별되는 근거 2~3문장"},
+"quotedInsights":[{"quote":"대화 짧은 인용(가능하면 익명)","note":"해석 한 줄"}]}`,
   });
 
   return parts;

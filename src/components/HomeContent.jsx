@@ -92,6 +92,61 @@ export default function HomeContent() {
       profile: result.profile || null,
       mbtiRankings,
       analysisMode,
+      relationshipAndCommunication:
+        result.relationshipAndCommunication &&
+        typeof result.relationshipAndCommunication === "object"
+          ? {
+              summary:
+                typeof result.relationshipAndCommunication.summary === "string"
+                  ? result.relationshipAndCommunication.summary
+                  : "",
+              tips: Array.isArray(result.relationshipAndCommunication.tips)
+                ? result.relationshipAndCommunication.tips.map(String)
+                : [],
+            }
+          : null,
+      workAndRoutine:
+        result.workAndRoutine && typeof result.workAndRoutine === "object"
+          ? {
+              summary:
+                typeof result.workAndRoutine.summary === "string"
+                  ? result.workAndRoutine.summary
+                  : "",
+              tips: Array.isArray(result.workAndRoutine.tips)
+                ? result.workAndRoutine.tips.map(String)
+                : [],
+            }
+          : null,
+      cautionAndMisread:
+        result.cautionAndMisread &&
+        typeof result.cautionAndMisread === "object"
+          ? {
+              points: Array.isArray(result.cautionAndMisread.points)
+                ? result.cautionAndMisread.points.map(String)
+                : [],
+            }
+          : null,
+      alternativeTypes:
+        result.alternativeTypes && typeof result.alternativeTypes === "object"
+          ? {
+              secondGuess: String(
+                result.alternativeTypes.secondGuess || "",
+              ).toUpperCase(),
+              distinction:
+                typeof result.alternativeTypes.distinction === "string"
+                  ? result.alternativeTypes.distinction
+                  : "",
+            }
+          : null,
+      quotedInsights: Array.isArray(result.quotedInsights)
+        ? result.quotedInsights
+            .filter((x) => x && typeof x === "object")
+            .map((x) => ({
+              quote: typeof x.quote === "string" ? x.quote : "",
+              note: typeof x.note === "string" ? x.note : "",
+            }))
+            .filter((x) => x.quote || x.note)
+        : [],
     };
   };
 
