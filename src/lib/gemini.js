@@ -48,7 +48,7 @@ function buildFreeSystemPrompt() {
 ${skill}
 
 ## 분석 깊이 (무료 · 빠른 추정)
-이번 요청은 **무료 빠른 추정**입니다. 캡처만 사용합니다. **4축 지표별 상세(indicators)는 출력하지 마세요.**
+이번 요청은 **무료 빠른 추정**입니다. 캡처 **최대 3장**만으로 압축 판단하므로 **오판 가능성**이 큽니다. **1·2·3순위 유형**을 모두 제시해 사용자가 범위를 이해하도록 하세요. **4축 지표별 상세(indicators)는 출력하지 마세요.**
 한 줄 요약·티저 불릿·잠금 미리보기 라벨만 제공하고, 구체적 심층 리포트는 유도하세요.
 확신도는 입력이 제한적이므로 보통 MEDIUM 또는 LOW를 우선 고려하세요.
 
@@ -149,9 +149,15 @@ function buildFreeUserParts({ targetName, images }) {
   parts.push({
     text: `\n## 출력 형식 (반드시 이 키만 사용)
 JSON만 출력하세요.
+mbtiType은 1순위와 반드시 동일하게 맞추세요. mbtiRankings는 서로 다른 유형 3개(1·2·3순위)를 채우세요.
 {
   "tier": "free",
   "mbtiType": "XXXX",
+  "mbtiRankings": [
+    { "rank": 1, "mbtiType": "XXXX", "hint": "1순위 한 줄 이유(15자 내)" },
+    { "rank": 2, "mbtiType": "YYYY", "hint": "2순위 후보 한 줄" },
+    { "rank": 3, "mbtiType": "ZZZZ", "hint": "3순위 후보 한 줄" }
+  ],
   "confidence": 0-100,
   "confidenceLevel": "HIGH|MEDIUM|LOW",
   "summary": { "headline": "한 줄 헤드라인", "oneLiner": "부연 한 문장" },

@@ -52,6 +52,19 @@ export default function HomeContent() {
       result.tier ||
       (analysisMode === ANALYSIS_MODE.PREMIUM ? "premium" : "free");
 
+    const rankingsRaw = Array.isArray(result.mbtiRankings)
+      ? result.mbtiRankings
+      : [];
+    const mbtiRankings = rankingsRaw
+      .filter((x) => x && typeof x.mbtiType === "string")
+      .map((x) => ({
+        rank: Number(x.rank) || 0,
+        mbtiType: String(x.mbtiType).toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4) || "XXXX",
+        hint: typeof x.hint === "string" ? x.hint : "",
+      }))
+      .filter((x) => x.mbtiType.length === 4)
+      .sort((a, b) => a.rank - b.rank);
+
     return {
       mbtiType: result.mbtiType || "XXXX",
       emoji: result.emoji || "🤔",
@@ -77,6 +90,7 @@ export default function HomeContent() {
           )
         : [],
       profile: result.profile || null,
+      mbtiRankings,
       analysisMode,
     };
   };

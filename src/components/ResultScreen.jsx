@@ -1,6 +1,7 @@
 "use client";
 
 import GlassCard from "./GlassCard";
+import { getMbtiMeta } from "@/constants/mbti-data";
 import {
   ANALYSIS_MODE,
   normalizeAnalysisMode,
@@ -35,6 +36,7 @@ export default function ResultScreen({
     teaserBullets,
     lockedPreview,
     tier,
+    mbtiRankings = [],
   } = result;
 
   const mode = normalizeAnalysisMode(analysisMode);
@@ -45,6 +47,13 @@ export default function ResultScreen({
     !isPremium &&
     summary &&
     typeof summary.headline === "string";
+
+  const rank2 =
+    mbtiRankings?.find((r) => r.rank === 2) || mbtiRankings?.[1];
+  const rank3 =
+    mbtiRankings?.find((r) => r.rank === 3) || mbtiRankings?.[2];
+  const meta2 = rank2 ? getMbtiMeta(rank2.mbtiType) : null;
+  const meta3 = rank3 ? getMbtiMeta(rank3.mbtiType) : null;
 
   return (
     <div className="pt-6">
@@ -121,6 +130,57 @@ export default function ResultScreen({
           </div>
         </div>
       </div>
+
+      {/* Free 전용: 2·3순위 후보 (캡처만으로 추정한 한계 안내용) */}
+      {!isPremium && (rank2 || rank3) && (
+        <div className="mb-4 anim-slide-up delay-1">
+          <p className="text-[11px] font-bold text-gray-600 mb-2 px-1">
+            사진만으로 빠르게 본 추정이라, 아래는 참고용 2·3순위 후보예요
+          </p>
+          <div className="grid grid-cols-1 gap-2">
+            {rank2 && (
+              <div
+                className="flex items-center gap-3 rounded-2xl p-3 border border-white/50"
+                style={{ background: "rgba(255,255,255,0.55)" }}
+              >
+                <span className="text-xs font-black text-gray-500 w-8 shrink-0">
+                  2위
+                </span>
+                <span className="text-2xl">{meta2?.emoji}</span>
+                <div className="min-w-0 flex-1 text-left">
+                  <p className="text-sm font-black text-gray-900 tracking-wider">
+                    {rank2.mbtiType}
+                  </p>
+                  <p className="text-[11px] text-gray-600 truncate">
+                    {meta2?.title}
+                    {rank2.hint ? ` · ${rank2.hint}` : ""}
+                  </p>
+                </div>
+              </div>
+            )}
+            {rank3 && (
+              <div
+                className="flex items-center gap-3 rounded-2xl p-3 border border-white/50"
+                style={{ background: "rgba(255,255,255,0.45)" }}
+              >
+                <span className="text-xs font-black text-gray-500 w-8 shrink-0">
+                  3위
+                </span>
+                <span className="text-2xl">{meta3?.emoji}</span>
+                <div className="min-w-0 flex-1 text-left">
+                  <p className="text-sm font-black text-gray-900 tracking-wider">
+                    {rank3.mbtiType}
+                  </p>
+                  <p className="text-[11px] text-gray-600 truncate">
+                    {meta3?.title}
+                    {rank3.hint ? ` · ${rank3.hint}` : ""}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Free 전용: 요약·티저·잠금 미리보기 */}
       {showFreeTeaser && (
@@ -390,12 +450,14 @@ export default function ResultScreen({
         </GlassCard>
       )}
 
-      {/* 주의사항 */}
+      {/* 주의사항 — 본문 대비 선명한 대비색 */}
       <div
-        className="glass-highlight rounded-2xl p-4 mb-5 anim-slide-up delay-5"
+        className="rounded-2xl p-4 mb-5 anim-slide-up delay-5 border border-amber-400/90 bg-amber-50 shadow-sm"
       >
-        <p className="text-xs font-bold text-yellow-700 mb-1">⚠️ 주의사항</p>
-        <p className="text-xs text-yellow-600 leading-relaxed">
+        <p className="text-sm font-extrabold text-amber-950 mb-1.5">
+          ⚠️ 주의사항
+        </p>
+        <p className="text-sm text-gray-900 leading-relaxed font-medium">
           이 분석은 재미를 위한 것으로, 실제 MBTI와 다를 수 있어요. 사람의
           성격은 하나의 도구로 단정지을 수 없답니다.
         </p>
@@ -439,24 +501,24 @@ export default function ResultScreen({
             style={{
               background:
                 "linear-gradient(145deg, rgba(124,58,237,0.08), rgba(254,229,0,0.12))",
-              border: "1px solid rgba(124,58,237,0.15)",
+              border: "1px solid rgba(124,58,237,0.2)",
             }}
           >
-            <p className="text-xs font-extrabold text-gray-800 mb-2">
-              더 깊이 알고 싶으신가요?
+            <p className="text-sm font-extrabold text-gray-900 mb-2 leading-snug">
+              무료 테스트는 캡처 최대 3장만으로 보는{" "}
+              <span className="text-amber-900">압축 추정</span>이라, 방금 결과가
+              실제 성향과 다를 수 있어요.
             </p>
-            <p className="text-sm text-gray-700 leading-relaxed mb-1.5">
-              지금 보신 건 <span className="font-bold text-amber-800">빠른 추정</span>
-              이에요. 말투·대화를 <span className="font-bold">4축으로 풀어 쓰고</span>,
-              관계·소통까지 짚는 <span className="font-bold text-purple-800">심층 리포트</span>가
-              필요하시다면 아래 버튼을 눌러 주세요.
+            <p className="text-sm text-gray-800 leading-relaxed mb-2">
+              4축 근거·말투 패턴·관계·소통까지{" "}
+              <span className="font-bold text-purple-900">더 정확하고 자세한 분석</span>
+              이 필요하시면, 유료{" "}
+              <span className="font-bold">프리미엄 리포트</span>로 진행해 보세요.
+              (캡처 최대 10장 · 메모 선택)
             </p>
-            <p className="text-[11px] text-gray-500 leading-relaxed">
-              더 정확하고 자세한 분석을 원하시면{" "}
-              <span className="font-semibold text-gray-700">
-                프리미엄 리포트
-              </span>
-              로 이어가실 수 있어요. (캡처 최대 10장 · 메모 선택 입력)
+            <p className="text-[11px] text-gray-600 leading-relaxed">
+              아래 버튼을 누르면 프리미엄 탭으로 이동한 뒤 결제하고 심층 리포트를
+              받을 수 있어요.
             </p>
           </div>
           <button
