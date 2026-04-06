@@ -15,6 +15,7 @@ import usePayment from "@/hooks/usePayment";
 import { getDeviceId } from "@/lib/device-id";
 import {
   FREE_LIMIT,
+  MAX_IMAGES_SENT_PREMIUM,
   ANALYSIS_MODE,
   normalizeAnalysisMode,
 } from "@/lib/analysis-tier";
@@ -369,7 +370,7 @@ export default function HomeContent() {
               maxImages={analysis.maxImages}
               tierHint={
                 analysis.isDeepTab
-                  ? "메모는 선택 · 캡처와 함께"
+                  ? `메모 선택 · 분석 전송 최대 ${MAX_IMAGES_SENT_PREMIUM}장(대표 샘플)`
                   : "추가 텍스트 없이 빠르게"
               }
             />
@@ -412,6 +413,7 @@ export default function HomeContent() {
             isMulti={analysis.isMulti}
             hasMemo={analysis.hasMemo}
             imageCount={analysis.images.length}
+            sentImageCount={analysis.sentImageCount}
             mode={loadingMode}
           />
         )}

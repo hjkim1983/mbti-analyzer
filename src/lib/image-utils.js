@@ -8,15 +8,25 @@ const COMPRESS_PRESETS = {
   3: { maxSize: 800, quality: 0.72 },
   4: { maxSize: 720, quality: 0.68 },
   5: { maxSize: 640, quality: 0.62 },
+  6: { maxSize: 600, quality: 0.58 },
+  7: { maxSize: 560, quality: 0.56 },
+  8: { maxSize: 520, quality: 0.54 },
+  9: { maxSize: 500, quality: 0.52 },
+  10: { maxSize: 480, quality: 0.5 },
 };
 
-/** 프리미엄: 멀티모달 입력 토큰·전송량 축소로 지연 단축 (가독성은 유지 가능한 선에서 한 단계 강하게 압축) */
+/** 프리미엄: 장수가 많을수록 해상도·품질을 한 단계씩 낮춰 멀티모달 부하 완화 */
 const COMPRESS_PRESETS_PREMIUM = {
   1: { maxSize: 900, quality: 0.78 },
   2: { maxSize: 800, quality: 0.72 },
   3: { maxSize: 720, quality: 0.68 },
   4: { maxSize: 640, quality: 0.64 },
   5: { maxSize: 560, quality: 0.58 },
+  6: { maxSize: 520, quality: 0.54 },
+  7: { maxSize: 480, quality: 0.52 },
+  8: { maxSize: 460, quality: 0.5 },
+  9: { maxSize: 440, quality: 0.48 },
+  10: { maxSize: 420, quality: 0.46 },
 };
 
 /**
@@ -29,7 +39,8 @@ const COMPRESS_PRESETS_PREMIUM = {
 export function fileToBase64(file, totalImages = 1, onProgress, options = {}) {
   const table =
     options.tier === "premium" ? COMPRESS_PRESETS_PREMIUM : COMPRESS_PRESETS;
-  const preset = table[Math.min(totalImages, 5)] ?? table[5];
+  const preset =
+    table[Math.min(totalImages, 10)] ?? table[10];
 
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

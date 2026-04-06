@@ -10,7 +10,10 @@
 export const FREE_LIMIT = 3;
 
 export const MAX_IMAGES_FREE = 3;
+/** 업로드 상한(UI) */
 export const MAX_IMAGES_PREMIUM = 10;
+/** 실제 Gemini로 전송하는 프리미엄 캡처 상한 — 토큰·지연 절감 */
+export const MAX_IMAGES_SENT_PREMIUM = 6;
 
 export const ANALYSIS_MODE = {
   FREE: "free",

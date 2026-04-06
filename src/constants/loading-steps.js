@@ -1,49 +1,38 @@
 import { ANALYSIS_MODE } from "@/lib/analysis-tier";
 
 /**
- * 로딩 단계 문구 (이미지 장수·메모 유무·모드별)
- * @param {boolean} isMulti
- * @param {boolean} hasMemo
+ * 로딩 단계 — 실제 API 단계와 1:1이 아니라 **체감 속도**용 3단계로 고정
+ * @param {boolean} _isMulti — 하위 호환 (미사용)
+ * @param {boolean} _hasMemo
  * @param {number} imageCount
  * @param {string} [mode] ANALYSIS_MODE.FREE | PREMIUM
  */
 export function getLoadingSteps(
-  isMulti,
-  hasMemo,
+  _isMulti,
+  _hasMemo,
   imageCount,
   mode = ANALYSIS_MODE.FREE,
 ) {
   const premium = mode === ANALYSIS_MODE.PREMIUM;
 
-  if (isMulti) {
-    const steps = [
-      `${imageCount}장 이미지 분석 준비`,
-      "대화·프로필 영역 분리",
-      premium ? "프리미엄 근거 정리" : "MBTI 데이터와 대조",
-      "말투 패턴 추출",
-      "프로필 분위기 읽기",
-      hasMemo ? "추가 메모 반영" : "이미지 신호 종합",
-      premium ? "프리미엄 해석" : "빠른 추정 정리",
-      "결과 카드 생성",
-    ];
-    return {
-      steps,
-      messages: steps,
-      icons: ["📸", "🔮", "💬", "📸", hasMemo ? "✏️" : "😄", premium ? "✨" : "🧠", "📋"],
-    };
-  }
-
   const steps = [
-    "이미지 분석 준비",
-    "대화 톤 읽기",
-    premium ? "프리미엄 근거 정리" : "MBTI 데이터와 대조",
-    hasMemo ? "메모 반영" : "말투 패턴 추출",
-    premium ? "프리미엄 해석" : "빠른 추정 정리",
-    "결과 생성",
+    "1차 판단 · 캡처 확인 중",
+    premium
+      ? "대화·프로필 신호로 근거 추출"
+      : "말투 패턴으로 빠른 추정",
+    premium ? "프리미엄 리포트 정리" : "결과 카드 만들기",
   ];
+
+  const icons = ["🔍", premium ? "✨" : "🧠", "📋"];
+
   return {
     steps,
     messages: steps,
-    icons: ["💬", "✏️", premium ? "✨" : "🧠", "📋"],
+    icons,
+    /** 부가 설명 (선택 UI) */
+    subtitle:
+      imageCount > 0
+        ? `${imageCount}장 기준으로 분석 중이에요`
+        : "분석 중이에요",
   };
 }

@@ -8,9 +8,10 @@ export default function LoadingScreen({
   isMulti,
   hasMemo,
   imageCount,
+  sentImageCount = imageCount,
   mode = ANALYSIS_MODE.FREE,
 }) {
-  const { steps, messages, icons } = getLoadingSteps(
+  const { steps, messages, icons, subtitle } = getLoadingSteps(
     isMulti,
     hasMemo,
     imageCount,
@@ -43,16 +44,23 @@ export default function LoadingScreen({
       <h2 className="text-xl font-extrabold text-gray-900 mb-1">
         AI가 분석 중이에요
       </h2>
-      <p className="text-gray-500 text-sm mb-3 min-h-5">
+      <p className="text-gray-500 text-sm mb-1 min-h-5">
         {messages[loadingStep] || messages[messages.length - 1]}
       </p>
+      {subtitle ? (
+        <p className="text-xs text-gray-400 mb-3">{subtitle}</p>
+      ) : (
+        <div className="mb-3" />
+      )}
 
       {isMulti && (
         <span
           className="text-xs font-bold px-3 py-1 rounded-full mb-4"
           style={{ background: "rgba(254,229,0,0.2)", color: "#856C00" }}
         >
-          ✨ 종합 분석 모드 · {imageCount}장
+          {sentImageCount < imageCount
+            ? `✨ 종합 분석 · 업로드 ${imageCount}장 → AI ${sentImageCount}장`
+            : `✨ 종합 분석 모드 · ${imageCount}장`}
         </span>
       )}
 

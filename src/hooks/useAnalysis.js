@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { fileToBase64 } from "@/lib/image-utils";
+import { selectImagesForApi } from "@/lib/analysis-images";
 import { getDeviceId } from "@/lib/device-id";
 import { getLoadingSteps } from "@/constants/loading-steps";
 import { supabase } from "@/lib/supabase";
@@ -9,6 +10,7 @@ import {
   FREE_LIMIT,
   MAX_IMAGES_FREE,
   MAX_IMAGES_PREMIUM,
+  MAX_IMAGES_SENT_PREMIUM,
   ANALYSIS_MODE,
 } from "@/lib/analysis-tier";
 
@@ -27,6 +29,11 @@ export default function useAnalysis() {
   const timerRef = useRef(null);
 
   const imageCount = images.length;
+  /** API로 실제 전송되는 장수(프리미엄은 대표 샘플만) */
+  const sentImageCount =
+    activeTab === "premium"
+      ? Math.min(imageCount, MAX_IMAGES_SENT_PREMIUM)
+      : imageCount;
   const maxImages =
     activeTab === "premium" ? MAX_IMAGES_PREMIUM : MAX_IMAGES_FREE;
   const isMulti = imageCount >= 2;
@@ -132,11 +139,8 @@ export default function useAnalysis() {
       const { messages } = getLoadingSteps(isMulti, hasMemo, imageCount, mode);
 
       let step = 0;
-      const intervalMs = isMulti
-        ? Math.max(900, imageCount * 600)
-        : isPremiumTab
-          ? 1000
-          : 900;
+      /** 3단계 로딩 — 긴 간격은 체감 대기만 늘림 */
+      const intervalMs = 700;
 
       timerRef.current = setInterval(() => {
         step++;
@@ -157,7 +161,7 @@ export default function useAnalysis() {
             setResult(data);
             if (data.freeCount) setFreeCount(data.freeCount);
             setStage("result");
-          }, 600);
+          }, 220);
         })
         .catch((err) => {
           clearInterval(timerRef.current);
@@ -175,11 +179,15 @@ export default function useAnalysis() {
         modeOverride ||
         (isPremiumTab ? ANALYSIS_MODE.PREMIUM : ANALYSIS_MODE.FREE);
 
-      const total = images.length;
       const imageTier =
         mode === ANALYSIS_MODE.PREMIUM ? "premium" : "free";
+      const toEncode =
+        mode === ANALYSIS_MODE.PREMIUM
+          ? selectImagesForApi(images, MAX_IMAGES_SENT_PREMIUM)
+          : images;
+      const total = toEncode.length;
       const base64Images = await Promise.all(
-        images.map(async (img) => {
+        toEncode.map(async (img) => {
           const converted = await fileToBase64(img.file, total, undefined, {
             tier: imageTier,
           });
@@ -326,6 +334,7 @@ export default function useAnalysis() {
     isChecking,
     isAnalysisBusy,
     imageCount,
+    sentImageCount,
     maxImages,
     isMulti,
     hasMemo,

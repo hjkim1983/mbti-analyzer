@@ -6,69 +6,70 @@ const MODEL = "gemini-2.5-flash";
 const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 const TIMEOUT_MS = 55000;
 
-/** 프리미엄: 심층 필드 추가로 상한 여유 */
-const PREMIUM_MAX_OUTPUT_TOKENS = 8192;
+/** 프리미엄: JSON 한도 — 불필요하게 긴 리포트 생성 방지(속도·비용) */
+const PREMIUM_MAX_OUTPUT_TOKENS = 5632;
 
-let cachedSkillPrompt = null;
+/** 무료: 짧은 스키마면 충분 */
+const FREE_MAX_OUTPUT_TOKENS = 1536;
 
-function getSkillPrompt() {
-  if (cachedSkillPrompt) return cachedSkillPrompt;
+/** compact 파일 없을 때 최소 규칙만 유지 */
+const INLINE_SKILL_FALLBACK =
+  "[A]대화 [B]프로필 [C]메모. 4축은 말투·이모지·계획·공감 표현에서 추론. 충돌 시 맥락(업무/친밀)을 명시.";
+
+let cachedCompactSkillPrompt = null;
+
+function getCompactSkillPrompt() {
+  if (cachedCompactSkillPrompt) return cachedCompactSkillPrompt;
   try {
-    cachedSkillPrompt = readFileSync(
-      join(process.cwd(), "docs", "mbti_skills.md"),
+    cachedCompactSkillPrompt = readFileSync(
+      join(process.cwd(), "docs", "mbti_skills_compact.md"),
       "utf-8",
     );
   } catch {
-    try {
-      cachedSkillPrompt = readFileSync(
-        join(process.cwd(), "mbti_skills.md"),
-        "utf-8",
-      );
-    } catch {
-      cachedSkillPrompt = "";
-    }
+    cachedCompactSkillPrompt = "";
   }
-  return cachedSkillPrompt;
+  if (!cachedCompactSkillPrompt.trim()) {
+    cachedCompactSkillPrompt = INLINE_SKILL_FALLBACK;
+  }
+  return cachedCompactSkillPrompt;
 }
 
-/** Premium: 풀 리포트 — 근거·비교·실전 해석 중심 */
+/** Premium: 요약 스킬 문서 + 압축 규칙 (전체 mbti_skills.md 매번 주입하지 않음) */
 function buildPremiumSystemPrompt() {
-  const skill = getSkillPrompt();
+  const skill = getCompactSkillPrompt();
   return `당신은 카카오톡 캡처·관찰 텍스트를 통합해 MBTI를 추론하는 전문 에이전트입니다.
 
+## 판단 기준 (요약)
 ${skill}
 
-## 프리미엄 리포트 원칙 (필수)
-1. **근거 공개**: 각 축(EI/SN/TF/JP)마다 캡처에서 온 **짧은 인용 또는 말투 패턴**을 evidence로 **3개 이상**. 형식 예: 「일단 계획부터」→ 실행·통제(J) 근거.
-2. **일반론 금지**: MBTI 교과서식 문장만 나열하지 말고, **이 입력에서만 나올 수 있는 해석**을 interpretation·summary에 담을 것.
-3. **확신도 과장 금지**: overall confidence는 보통 **52~85** 범위를 우선. 90 이상은 정말 압도적 근거가 있을 때만. confidenceReason으로 숫자 의미를 한 줄 설명.
-4. **경계·혼합**: T/F·S/N이 애매하면 indicators 해당 축에 boundaryNote에 "혼합형/경계형" 설명.
-5. **대안 비교**: 1·2·3순위 유형을 alternativeTypes에 채우고, 왜 1순위인지·왜 2·3이 아닌지 구체 비교.
-6. **관계 실전**: 호감/불편/친밀/갈등/답장·이모티콘/연락 선호를 relationshipAndCommunication 구조 필드에 채움.
-7. **한계**: analysisLimitations에 업무 대화 편향·캡처 부족·관계 맥락 등 솔직히 기술 (신뢰 상승 목적).
-8. **실전 팁**: practicalTips에 소통·서운함·갈등·일정 제안 등 실행 가능한 문장.
+## 프리미엄 리포트 원칙
+1. **근거**: 각 축 evidence는 **짧은 인용 3개** (한 줄·25자 내외). 장황한 설명 금지.
+2. **해석**: indicators의 interpretation·관계/실전 필드는 **문단당 1~3문장**. 같은 말 반복 금지.
+3. **확신도**: confidence 보통 **52~85**. 90+ 는 근거가 매우 명확할 때만. confidenceReason 한 줄.
+4. **경계**: 애매한 축은 boundaryNote에 명시.
+5. **대안**: alternativeTypes에 1·2·3순위와 차이를 **간결히**.
+6. **한계·팁**: analysisLimitations·practicalTips는 **실제로 쓸 만한 항목 수**만 (빈 수식어 금지).
 
 ## 출력
 JSON만. 한국어. 빈 필드는 null 또는 []. 개인정보는 가명·최소 인용.`;
 }
 
-/** Free: 짧은 맛보기 전용 — 토큰 절약, 풀 지표 리포트 생성 금지 */
+/** Free: 긴 스킬 문서 없음 — 짧은 규칙만 (입력 토큰·지연 최소화) */
 function buildFreeSystemPrompt() {
-  const skill = getSkillPrompt();
-  return `당신은 카카오톡 캡처 이미지를 보고 MBTI를 **빠르게 방향만** 제시하는 에이전트입니다.
+  return `카카오톡 캡처로 MBTI **방향만** 빠르게 추정하는 에이전트입니다.
 
-${skill}
+## 입력
+대화/프로필이 한 화면에 있으면 대화 톤·이모지·답장 패턴을 우선하세요.
 
-## 분석 깊이 (무료 · 빠른 추정)
-이번 요청은 **무료 빠른 추정**입니다. 캡처 **최대 3장**만으로 압축 판단하므로 **오판 가능성**이 큽니다. **1·2·3순위 유형**을 제시하되, 사용자에게는 **가까운 후보 1개(2순위)** 강조용으로 쓰입니다. **4축 지표별 상세(indicators)는 출력하지 마세요.**
-**evidenceBullets**에 캡처 기반 짧은 근거 2~3개(「인용」→ 한 줄 해석)를 반드시 넣어 "내 카톡을 봤다" 느낌을 주세요.
-한 줄 요약·티저·잠금 미리보기로 프리미엄 가치를 구체적으로 유도하세요.
-확신도는 입력이 제한적이므로 **52~78** 정도, confidenceLevel은 MEDIUM 또는 LOW 우선.
+## 무료 빠른 추정
+- 캡처 **최대 3장** 기준. 오판 가능 — **1·2·3순위** 유형 제시.
+- **indicators·프리미엄 전용 필드 금지.**
+- **evidenceBullets** 2~3개: 「짧은 인용」+ 한 줄 해석.
+- summary·티저·lockedPreview로 프리미엄 유도.
+- confidence **52~78**, confidenceLevel MEDIUM|LOW 우선.
 
-## 출력 규칙
-1. 반드시 아래 JSON 스키마에만 맞춰 응답하세요.
-2. JSON 외 텍스트 금지.
-3. indicators, highlights 상세, profile 등 **프리미엄 전용 필드는 포함하지 마세요.**`;
+## 출력
+JSON만. 한국어.`;
 }
 
 function buildPremiumUserParts({ targetName, memo, images }) {
@@ -111,51 +112,15 @@ function buildPremiumUserParts({ targetName, memo, images }) {
   parts.push({ text: `\n## 가중치\n${weightGuide}` });
 
   parts.push({
-    text: `## 출력 (JSON만, 키 누락 금지 — 없으면 null/[])
-{"tier":"premium","mbtiType":"XXXX",
-"confidence":52-88,"confidenceLevel":"HIGH|MEDIUM|LOW","confidenceReason":"숫자가 이 정도인 이유 한 문장",
-"oneLineConclusion":"ESTJ / 구조와 실행 중심 … (유형 + 한 줄 성향)",
-"keyEvidenceSummary":[
-  {"snippet":"「짧은 인용 또는 패턴」","axis":"J","insight":"왜 이 결론에 쓰였는지 한 줄"},
-  {"snippet":"…","axis":"T","insight":"…"},
-  {"snippet":"…","axis":"E","insight":"…"}
-],
-"indicators":{
-"EI":{"result":"E","score":68,"confidence":70,"evidence":["≥3"],"interpretation":"","boundaryNote":null,"strengthLabel":"보통"},
-"SN":{"result":"S","score":55,"confidence":52,"evidence":["≥3"],"interpretation":"","boundaryNote":"애매하면 한 줄","strengthLabel":"낮음"},
-"TF":{"result":"T","score":62,"confidence":58,"evidence":["≥3"],"interpretation":"","boundaryNote":null,"strengthLabel":"보통"},
-"JP":{"result":"J","score":71,"confidence":75,"evidence":["≥3"],"interpretation":"","boundaryNote":null,"strengthLabel":"높음"}},
-"highlights":{"chatPatterns":[3,6],"profileAnalysis":null,"behaviorAnalysis":null},
-"traits":[3,6],"tags":[],"conflicts":[],
-"profile":{"mood":"","status":"","bg":"","score":0-100}|null,
-"alternativeTypes":{
-"first":{"mbtiType":"XXXX","oneLiner":"1순위 한 줄"},
-"second":{"mbtiType":"YYYY","shared":"1순위와 공통점","difference":"왜 최종 선택에서 밀렸는지"},
-"third":{"mbtiType":"ZZZZ","shared":"…","difference":"…"},
-"whyFirst":"최종적으로 1순위를 택한 이유 2~4문장"
-},
-"relationshipAndCommunication":{
-"summary":"전체 해석형 2~4문장 (일반론 금지)",
-"whenInterested":"호감 있을 때 말투·행동",
-"whenUncomfortable":"불편할 때",
-"whenClose":"친해졌을 때",
-"inConflict":"싸울 때 반응",
-"replyAndEmoji":"답장/이모티콘/말투",
-"contactPreference":"연락 선호",
-"tips":["실전 팁"]
-},
-"practicalTips":{
-"effectiveCommunication":["이 사람에게 잘 통하는 말하기"],
-"whenHurt":["서운함 전달 시"],
-"conflictAvoid":["갈등 시 피할 것"],
-"scheduling":["약속·일정 제안"],
-"emotionVsDirect":"감정 토로 vs 핵심 전달 중 무엇이 더 잘 통하는지 한 줄"
-},
-"workAndRoutine":{"summary":"2~3문장","tips":["…"]},
-"cautionAndMisread":{"points":["이 입력에서의 오판 포인트"]},
-"analysisLimitations":{"points":["업무 편향","캡처 수","관계 맥락","프로필은 보조 근거"]},
-"quotedInsights":[{"quote":"짧은 인용","note":"해석"}],
-"emoji":"😀","title":"유형 한글 타이틀","color":"#hex"}`,
+    text: `## 출력 (JSON만, application/json 응답)
+필수 키: tier "premium", mbtiType, confidence, confidenceLevel, confidenceReason, oneLineConclusion,
+keyEvidenceSummary[{snippet,axis,insight}],
+indicators(EI,SN,TF,JP: result,score,confidence,evidence[],interpretation,boundaryNote,strengthLabel),
+highlights, traits, tags, conflicts, profile|null, alternativeTypes(first,second,third,whyFirst),
+relationshipAndCommunication(summary, whenInterested, whenUncomfortable, whenClose, inConflict, replyAndEmoji, contactPreference, tips[]),
+practicalTips, workAndRoutine, cautionAndMisread, analysisLimitations, quotedInsights, emoji, title, color
+
+짧게: evidence는 인용 위주 한 줄. interpretation·관계 문단은 각 1~3문장. 빈 값 null/[]`,
   });
 
   return parts;
@@ -344,7 +309,7 @@ async function callGeminiFree({ targetName, images }) {
       temperature: 0.35,
       topP: 0.85,
       topK: 40,
-      maxOutputTokens: 2048,
+      maxOutputTokens: FREE_MAX_OUTPUT_TOKENS,
       responseMimeType: "application/json",
       candidateCount: 1,
     },

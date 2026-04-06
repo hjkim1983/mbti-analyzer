@@ -9,10 +9,12 @@ import {
 import { getMbtiMeta } from "@/constants/mbti-data";
 import {
   ANALYSIS_MODE,
+  MAX_IMAGES_SENT_PREMIUM,
   normalizeAnalysisMode,
   validateAnalysisRequest,
   requiresPayment,
 } from "@/lib/analysis-tier";
+import { selectImagesForApi } from "@/lib/analysis-images";
 
 // Vercel Hobby: 최대 60초 — 심층(최대 10장) 처리 시간 확보
 export const maxDuration = 60;
@@ -59,6 +61,15 @@ export async function POST(request) {
     const memoTrim =
       mode === ANALYSIS_MODE.FREE ? "" : (memo || "").trim();
 
+    /** 프리미엄: 업로드 10장이어도 API는 대표 N장만 사용 (토큰·지연 절감) */
+    let imagesForGemini = images || [];
+    if (mode === ANALYSIS_MODE.PREMIUM && imagesForGemini.length > 0) {
+      imagesForGemini = selectImagesForApi(
+        imagesForGemini,
+        MAX_IMAGES_SENT_PREMIUM,
+      );
+    }
+
     if (!hasImages && mode === ANALYSIS_MODE.FREE) {
       return NextResponse.json(
         {
@@ -93,7 +104,7 @@ export async function POST(request) {
       result = await callGemini({
         targetName: targetName || "미지정",
         memo: memoTrim,
-        images: images || [],
+        images: imagesForGemini,
         mode,
       });
     } catch (err) {
@@ -134,7 +145,7 @@ export async function POST(request) {
       targetName: targetName || "미지정",
       result,
       memo: memoTrim || null,
-      imageCount: images?.length || 0,
+      imageCount: imagesForGemini?.length || 0,
       isPaid,
       paymentId,
       analysisMode: mode,
