@@ -20,6 +20,7 @@ import {
   normalizeAnalysisMode,
 } from "@/lib/analysis-tier";
 import { softenOverallConfidenceForDisplay } from "@/lib/result-confidence";
+import { sanitizeAlternativeTypes } from "@/lib/alternative-types-sanitize";
 
 export default function HomeContent() {
   const [isMounted, setIsMounted] = useState(false);
@@ -238,63 +239,10 @@ export default function HomeContent() {
         Array.isArray(result.analysisLimitations.points)
           ? { points: result.analysisLimitations.points.map(String) }
           : null,
-      alternativeTypes:
-        result.alternativeTypes && typeof result.alternativeTypes === "object"
-          ? (() => {
-              const a = result.alternativeTypes;
-              const clean4 = (s) =>
-                String(s || "")
-                  .toUpperCase()
-                  .replace(/[^A-Z]/g, "")
-                  .slice(0, 4);
-              const mbti = clean4(result.mbtiType);
-              return {
-                secondGuess: clean4(a.secondGuess || a.second?.mbtiType),
-                distinction:
-                  typeof a.distinction === "string" ? a.distinction : "",
-                whyFirst:
-                  typeof a.whyFirst === "string" ? a.whyFirst : "",
-                first:
-                  a.first && typeof a.first === "object"
-                    ? {
-                        mbtiType: clean4(a.first.mbtiType) || mbti,
-                        oneLiner:
-                          typeof a.first.oneLiner === "string"
-                            ? a.first.oneLiner
-                            : "",
-                      }
-                    : { mbtiType: mbti, oneLiner: "" },
-                second:
-                  a.second && typeof a.second === "object"
-                    ? {
-                        mbtiType: clean4(a.second.mbtiType),
-                        shared:
-                          typeof a.second.shared === "string"
-                            ? a.second.shared
-                            : "",
-                        difference:
-                          typeof a.second.difference === "string"
-                            ? a.second.difference
-                            : "",
-                      }
-                    : null,
-                third:
-                  a.third && typeof a.third === "object"
-                    ? {
-                        mbtiType: clean4(a.third.mbtiType),
-                        shared:
-                          typeof a.third.shared === "string"
-                            ? a.third.shared
-                            : "",
-                        difference:
-                          typeof a.third.difference === "string"
-                            ? a.third.difference
-                            : "",
-                      }
-                    : null,
-              };
-            })()
-          : null,
+      alternativeTypes: sanitizeAlternativeTypes(
+        result.alternativeTypes,
+        result.mbtiType,
+      ),
       quotedInsights: Array.isArray(result.quotedInsights)
         ? result.quotedInsights
             .filter((x) => x && typeof x === "object")

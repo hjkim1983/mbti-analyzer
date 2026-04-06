@@ -416,7 +416,9 @@ export default function ResultScreen({
       {isPremium &&
         alternativeTypes &&
         (alternativeTypes.whyFirst?.trim() ||
+          alternativeTypes.first?.mbtiType ||
           alternativeTypes.second?.mbtiType ||
+          alternativeTypes.third?.mbtiType ||
           alternativeTypes.distinction?.trim()) && (
         <GlassCard animate delay={3} className="mb-4">
           <h3 className="font-extrabold text-gray-900 mb-2 flex items-center gap-2">
@@ -431,19 +433,26 @@ export default function ResultScreen({
           <p className="text-[11px] text-gray-500 mb-3">
             왜 {mbtiType}인지, 비슷한 다른 유형은 왜 아닌지 정리했어요.
           </p>
-          <div className="rounded-2xl p-3 mb-3 bg-violet-50/50 border border-violet-100">
-            <p className="text-xs font-black text-violet-900 mb-1">1순위</p>
-            <p className="text-lg font-black tracking-widest text-gray-900">
-              {alternativeTypes.first?.mbtiType || mbtiType}
-            </p>
-            {alternativeTypes.first?.oneLiner?.trim() && (
-              <p className="text-xs text-gray-700 mt-1">
-                {alternativeTypes.first.oneLiner}
+          {alternativeTypes.first?.mbtiType &&
+            alternativeTypes.first.mbtiType.length === 4 &&
+            alternativeTypes.first.mbtiType !== mbtiType && (
+            <div className="rounded-2xl p-3 mb-3 bg-violet-50/50 border border-violet-100">
+              <p className="text-xs font-black text-violet-900 mb-1">
+                가장 가까웠던 다른 유형
               </p>
-            )}
-          </div>
+              <p className="text-lg font-black tracking-widest text-gray-900">
+                {alternativeTypes.first.mbtiType}
+              </p>
+              {alternativeTypes.first?.oneLiner?.trim() && (
+                <p className="text-xs text-gray-700 mt-1">
+                  {alternativeTypes.first.oneLiner}
+                </p>
+              )}
+            </div>
+          )}
           {alternativeTypes.second?.mbtiType &&
-            alternativeTypes.second.mbtiType.length === 4 && (
+            alternativeTypes.second.mbtiType.length === 4 &&
+            alternativeTypes.second.mbtiType !== mbtiType && (
             <div className="mb-3 p-3 rounded-2xl bg-white/40 border border-white/60">
               <p className="text-xs font-bold text-gray-800 mb-1">
                 2순위 후보 · {alternativeTypes.second.mbtiType}{" "}
@@ -464,7 +473,8 @@ export default function ResultScreen({
             </div>
           )}
           {alternativeTypes.third?.mbtiType &&
-            alternativeTypes.third.mbtiType.length === 4 && (
+            alternativeTypes.third.mbtiType.length === 4 &&
+            alternativeTypes.third.mbtiType !== mbtiType && (
             <div className="mb-3 p-3 rounded-2xl bg-white/30 border border-white/50">
               <p className="text-xs font-bold text-gray-800 mb-1">
                 3순위 후보 · {alternativeTypes.third.mbtiType}{" "}

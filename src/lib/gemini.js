@@ -47,7 +47,7 @@ ${skill}
 2. **해석**: indicators의 interpretation·관계/실전 필드는 **문단당 1~3문장**. 같은 말 반복 금지.
 3. **확신도**: confidence 보통 **52~85**. 90+ 는 근거가 매우 명확할 때만. confidenceReason 한 줄.
 4. **경계**: 애매한 축은 boundaryNote에 명시.
-5. **대안**: alternativeTypes에 1·2·3순위와 차이를 **간결히**.
+5. **대안**: alternativeTypes의 first·second·third의 mbtiType은 **최종 mbtiType과 다른** 서로 다른 유형만(헷갈렸던 차선·제외 후보). 최종 결론 유형은 루트 mbtiType에만 넣고, 대안 칸에 동일 코드를 반복하지 말 것.
 6. **한계·팁**: analysisLimitations·practicalTips는 **실제로 쓸 만한 항목 수**만 (빈 수식어 금지).
 
 ## 출력
@@ -120,6 +120,7 @@ highlights, traits, tags, conflicts, profile|null, alternativeTypes(first,second
 relationshipAndCommunication(summary, whenInterested, whenUncomfortable, whenClose, inConflict, replyAndEmoji, contactPreference, tips[]),
 practicalTips, workAndRoutine, cautionAndMisread, analysisLimitations, quotedInsights, emoji, title, color
 
+alternativeTypes 규칙: first·second·third의 mbtiType은 **mbtiType(최종)과 다른** 코드만. 중복 금지.
 짧게: evidence는 인용 위주 한 줄. interpretation·관계 문단은 각 1~3문장. 빈 값 null/[]`,
   });
 
