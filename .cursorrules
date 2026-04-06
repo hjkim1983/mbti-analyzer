@@ -13,11 +13,11 @@
 3. **분기 처리 (Free vs Premium)**:
    - **Premium**: 항상 포트원 결제 후 분석 (`requiresPayment` = true). 메모는 선택.
    - **Free**: 누적 분석 횟수가 **무료 상한(현재 3회) 미만**이면 결제 없이 분석; **상한 이상**이면 Premium 탭으로 유도 후 결제.
-4. **AI 분석**: Free는 **짧은 JSON 전용 호출**(티저·요약), Premium은 **풀 리포트 JSON** 별도 호출. `mbti_skills.md` 지침 준수. 결과는 `analyses`에 저장(`analysis_mode`: `free` | `premium`, 레거시 `simple`/`deep`은 앱에서 매핑).
+4. **AI 분석**: Free는 **짧은 JSON 전용 호출**(티저·요약), Premium은 **풀 리포트 JSON** 별도 호출. `docs/mbti_skills.md` 지침 준수. 결과는 `analyses`에 저장(`analysis_mode`: `free` | `premium`, 레거시 `simple`/`deep`은 앱에서 매핑).
 5. **결과 출력**: `loadingSteps` 애니메이션 종료 후 최종 보고서를 렌더링합니다.
 
 ## 3. 분석 에이전트 및 디자인 지침
-* **분석 기준**: 루트의 `mbti_skills.md` 가이드라인을 최우선 순위로 준수합니다.
+* **분석 기준**: `docs/mbti_skills.md` 가이드라인을 최우선 순위로 준수합니다.
 * **통합 이미지 처리**: AI 멀티모달로 이미지에서 대화([A])와 프로필([B])을 스스로 구분해 분석합니다.
 * **가중치**: 이미지+메모 조합에 따라 `src/lib/gemini.js`의 Premium 경로와 동일한 비율(대화/프로필/메모)을 유지합니다. Free 모드에서는 메모를 보내지 않습니다.
 * **디자인**: `src/components/` + `globals.css` 글래스모피즘을 기준으로 하며, 참고용 원본은 루트 `kakao-mbti-scanner.jsx`입니다.
