@@ -6,6 +6,10 @@ import {
   ANALYSIS_MODE,
   normalizeAnalysisMode,
 } from "@/lib/analysis-tier";
+import {
+  axisStrengthFromConfidence,
+  confidenceLevelToKorean,
+} from "@/lib/result-confidence";
 
 export default function ResultScreen({
   result,
@@ -25,7 +29,12 @@ export default function ResultScreen({
     title,
     color,
     confidence,
+    confidenceDisplay,
     confidenceLevel,
+    confidenceReason,
+    oneLineConclusion,
+    keyEvidenceSummary = [],
+    evidenceBullets = [],
     indicators,
     highlights,
     traits,
@@ -40,9 +49,15 @@ export default function ResultScreen({
     relationshipAndCommunication,
     workAndRoutine,
     cautionAndMisread,
+    analysisLimitations,
+    practicalTips,
     alternativeTypes,
     quotedInsights = [],
   } = result;
+
+  const displayConf =
+    confidenceDisplay != null ? confidenceDisplay : confidence;
+  const levelKo = confidenceLevelToKorean(confidenceLevel);
 
   const mode = normalizeAnalysisMode(analysisMode);
   const isPremium =
@@ -58,7 +73,16 @@ export default function ResultScreen({
   const rank3 =
     mbtiRankings?.find((r) => r.rank === 3) || mbtiRankings?.[2];
   const meta2 = rank2 ? getMbtiMeta(rank2.mbtiType) : null;
-  const meta3 = rank3 ? getMbtiMeta(rank3.mbtiType) : null;
+
+  /** 프리미엄 상단 훅: API keyEvidenceSummary 없으면 인용에서 최대 3개 보강 */
+  const premiumHookEvidence =
+    isPremium && keyEvidenceSummary.length === 0 && quotedInsights.length > 0
+      ? quotedInsights.slice(0, 3).map((q) => ({
+          snippet: q.quote || "…",
+          axis: "",
+          insight: q.note || "",
+        }))
+      : keyEvidenceSummary;
 
   return (
     <div className="pt-6">
@@ -97,6 +121,42 @@ export default function ResultScreen({
         </div>
       )}
 
+      {/* Premium: 핵심 근거 요약 — 최상단 3초 훅 */}
+      {isPremium && premiumHookEvidence.length > 0 && (
+        <GlassCard animate className="mb-4 border-2 border-amber-200/80 bg-amber-50/30">
+          <p className="text-[11px] font-extrabold text-amber-900 mb-2 uppercase tracking-wide">
+            📌 대화에서 잡힌 핵심 근거
+          </p>
+          <ul className="space-y-2.5">
+            {premiumHookEvidence.slice(0, 3).map((item, i) => (
+              <li key={i} className="text-sm text-gray-800 leading-snug">
+                <span className="font-bold text-violet-800">
+                  {item.snippet ? `「${item.snippet.replace(/^「|」$/g, "")}」` : "—"}
+                </span>
+                {item.axis ? (
+                  <span className="text-[10px] text-gray-500 ml-1">({item.axis}축)</span>
+                ) : null}
+                {item.insight ? (
+                  <span className="block text-xs text-gray-600 mt-1 pl-0.5 border-l-2 border-violet-200">
+                    → {item.insight}
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </GlassCard>
+      )}
+
+      {/* Premium: 한 줄 결론 */}
+      {isPremium && (oneLineConclusion?.trim() || title) && (
+        <div className="rounded-2xl p-4 mb-4 text-center border border-white/60 bg-white/35 anim-slide-up">
+          <p className="text-[10px] font-bold text-gray-500 mb-1">한 줄 결론</p>
+          <p className="text-base font-extrabold text-gray-900 leading-snug">
+            {oneLineConclusion?.trim() || `${mbtiType} / ${title}`}
+          </p>
+        </div>
+      )}
+
       {/* MBTI 메인 카드 */}
       <div
         className="rounded-3xl overflow-hidden shadow-xl mb-4 anim-slide-up delay-1"
@@ -119,9 +179,26 @@ export default function ResultScreen({
             {mbtiType}
           </div>
           <p className="text-gray-600 font-semibold text-sm mb-1">{title}</p>
-          <p className="text-xs text-gray-400 mb-3">
-            확신도 {confidence}% ({confidenceLevel})
+          <p className="text-xs text-gray-500 mb-1">
+            {isPremium ? (
+              <>
+                종합 확신: <span className="font-bold text-gray-800">{levelKo}</span>
+                {" · "}
+                표시 {displayConf}% (과장 방지를 위해 완화 표시)
+              </>
+            ) : (
+              <>
+                확신도 {displayConf}% ({levelKo})
+              </>
+            )}
           </p>
+          {isPremium && confidenceReason?.trim() && (
+            <p className="text-[11px] text-gray-600 mb-3 px-1 leading-relaxed">
+              왜 이 정도로 봤나요? {confidenceReason}
+            </p>
+          )}
+          {!isPremium && <p className="text-[10px] text-gray-400 mb-3">캡처만으로는 오판 가능성이 있어요</p>}
+          {isPremium && !confidenceReason?.trim() && <div className="mb-2" />}
           <div className="flex justify-center gap-2 flex-wrap">
             {tags?.map((tag) => (
               <span
@@ -136,54 +213,35 @@ export default function ResultScreen({
         </div>
       </div>
 
-      {/* Free 전용: 2·3순위 후보 (캡처만으로 추정한 한계 안내용) */}
-      {!isPremium && (rank2 || rank3) && (
+      {/* Free: 가까운 후보 1개만 (개인화 깊이는 Premium에서) */}
+      {!isPremium && rank2 && (
         <div className="mb-4 anim-slide-up delay-1">
           <p className="text-[11px] font-bold text-gray-600 mb-2 px-1">
-            사진만으로 빠르게 본 추정이라, 아래는 참고용 2·3순위 후보예요
+            빠른 추정 — 1순위와 비슷했던 다른 유형
           </p>
-          <div className="grid grid-cols-1 gap-2">
-            {rank2 && (
-              <div
-                className="flex items-center gap-3 rounded-2xl p-3 border border-white/50"
-                style={{ background: "rgba(255,255,255,0.55)" }}
-              >
-                <span className="text-xs font-black text-gray-500 w-8 shrink-0">
-                  2위
-                </span>
-                <span className="text-2xl">{meta2?.emoji}</span>
-                <div className="min-w-0 flex-1 text-left">
-                  <p className="text-sm font-black text-gray-900 tracking-wider">
-                    {rank2.mbtiType}
-                  </p>
-                  <p className="text-[11px] text-gray-600 truncate">
-                    {meta2?.title}
-                    {rank2.hint ? ` · ${rank2.hint}` : ""}
-                  </p>
-                </div>
-              </div>
-            )}
-            {rank3 && (
-              <div
-                className="flex items-center gap-3 rounded-2xl p-3 border border-white/50"
-                style={{ background: "rgba(255,255,255,0.45)" }}
-              >
-                <span className="text-xs font-black text-gray-500 w-8 shrink-0">
-                  3위
-                </span>
-                <span className="text-2xl">{meta3?.emoji}</span>
-                <div className="min-w-0 flex-1 text-left">
-                  <p className="text-sm font-black text-gray-900 tracking-wider">
-                    {rank3.mbtiType}
-                  </p>
-                  <p className="text-[11px] text-gray-600 truncate">
-                    {meta3?.title}
-                    {rank3.hint ? ` · ${rank3.hint}` : ""}
-                  </p>
-                </div>
-              </div>
-            )}
+          <div
+            className="flex items-center gap-3 rounded-2xl p-3 border border-white/50"
+            style={{ background: "rgba(255,255,255,0.55)" }}
+          >
+            <span className="text-xs font-black text-violet-700 w-14 shrink-0">
+              가까운 후보
+            </span>
+            <span className="text-2xl">{meta2?.emoji}</span>
+            <div className="min-w-0 flex-1 text-left">
+              <p className="text-sm font-black text-gray-900 tracking-wider">
+                {rank2.mbtiType}
+              </p>
+              <p className="text-[11px] text-gray-600 truncate">
+                {meta2?.title}
+                {rank2.hint ? ` · ${rank2.hint}` : ""}
+              </p>
+            </div>
           </div>
+          {rank3 && (
+            <p className="text-[10px] text-gray-400 mt-2 px-1">
+              3순위({rank3.mbtiType})까지의 비교·선택 이유는 Premium 리포트에서 볼 수 있어요.
+            </p>
+          )}
         </div>
       )}
 
@@ -194,9 +252,30 @@ export default function ResultScreen({
             {summary.headline}
           </h3>
           {summary.oneLiner && (
-            <p className="text-sm text-gray-600 mb-4 leading-relaxed">
+            <p className="text-sm text-gray-600 mb-3 leading-relaxed">
               {summary.oneLiner}
             </p>
+          )}
+          {evidenceBullets.length > 0 && (
+            <div className="mb-4 rounded-2xl p-3 bg-violet-50/50 border border-violet-100">
+              <p className="text-[11px] font-bold text-violet-900 mb-2">
+                캡처에서 잡힌 짧은 근거
+              </p>
+              <ul className="space-y-2">
+                {evidenceBullets.slice(0, 3).map((ev, i) => (
+                  <li key={i} className="text-xs text-gray-800">
+                    {ev.snippet ? (
+                      <span className="font-semibold text-violet-900">
+                        「{String(ev.snippet).replace(/^「|」$/g, "")}」
+                      </span>
+                    ) : null}
+                    {ev.insight ? (
+                      <span className="block text-gray-600 mt-0.5">→ {ev.insight}</span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
           {teaserBullets?.length > 0 && (
             <ul className="space-y-2 mb-4">
@@ -225,19 +304,24 @@ export default function ResultScreen({
         </GlassCard>
       )}
 
-      {/* 지표별 분석 — 프리미엄 또는 레거시 풀 JSON */}
+      {/* 지표별 분석 — 프리미엄: 근거+해석+축 강도 */}
       {indicators && (
         <GlassCard animate delay={2} className="mb-4">
-          <h3 className="font-extrabold text-gray-900 mb-4 flex items-center gap-2">
+          <h3 className="font-extrabold text-gray-900 mb-1 flex items-center gap-2">
             <span
               className="w-7 h-7 rounded-xl flex items-center justify-center text-sm"
               style={{ background: "#FEE500" }}
             >
               📊
             </span>
-            지표별 분석
+            지표별 분석 (대화 근거)
           </h3>
-          <div className="space-y-4">
+          {isPremium && (
+            <p className="text-[11px] text-gray-500 mb-4">
+              각 축은 캡처 속 표현·말투 패턴을 바탕으로 본 것입니다. 애매한 축은 경계·혼합으로 표시될 수 있어요.
+            </p>
+          )}
+          <div className="space-y-5">
             {Object.entries(indicators).map(([key, ind]) => {
               const [leftLabel, rightLabel] = {
                 EI: ["E 외향", "I 내향"],
@@ -247,28 +331,43 @@ export default function ResultScreen({
               }[key] || [key[0], key[1]];
 
               const isLeft = ind.result === key[0];
-              const percentage = ind.score;
+              const percentage = Math.min(100, Math.max(0, ind.score));
+              const winPct = percentage;
+              const losePct = 100 - percentage;
+              const leftPct = isLeft ? winPct : losePct;
+              const rightPct = isLeft ? losePct : winPct;
+              const axisConf = Number(ind.confidence);
+              const strength =
+                ind.strengthLabel?.trim() ||
+                axisStrengthFromConfidence(axisConf);
 
               return (
-                <div key={key}>
-                  <div className="flex justify-between text-xs font-bold mb-1">
+                <div key={key} className="border-b border-white/40 pb-4 last:border-0 last:pb-0">
+                  <div className="flex justify-between text-xs font-bold mb-1 gap-1 items-start">
                     <span
                       style={{
-                        color: isLeft ? color : "#9CA3AF",
+                        color: leftPct >= rightPct ? color : "#9CA3AF",
                       }}
                     >
-                      {leftLabel} {isLeft ? `${percentage}%` : ""}
+                      {leftLabel} {leftPct}%
                     </span>
-                    <span className="text-gray-400">{ind.confidence}% 확신</span>
+                    <span className="text-gray-500 text-[10px] shrink-0 pt-0.5">
+                      축 {strength}
+                    </span>
                     <span
                       style={{
-                        color: !isLeft ? color : "#9CA3AF",
+                        color: rightPct > leftPct ? color : "#9CA3AF",
                       }}
                     >
-                      {!isLeft ? `${percentage}%` : ""} {rightLabel}
+                      {rightPct}% {rightLabel}
                     </span>
                   </div>
-                  <div className="h-2.5 bg-gray-100/60 rounded-full overflow-hidden">
+                  {isPremium && (
+                    <p className="text-[10px] text-gray-500 mb-1.5 text-center">
+                      {key[0]} {leftPct}% · {key[1]} {rightPct}%
+                    </p>
+                  )}
+                  <div className="h-2.5 bg-gray-100/60 rounded-full overflow-hidden clear-both">
                     <div
                       className="h-full rounded-full transition-all duration-1000"
                       style={{
@@ -279,16 +378,31 @@ export default function ResultScreen({
                       }}
                     />
                   </div>
+                  {isPremium && ind.interpretation?.trim() && (
+                    <p className="text-xs text-gray-700 mt-2 leading-relaxed bg-white/30 rounded-xl p-2">
+                      {ind.interpretation}
+                    </p>
+                  )}
+                  {isPremium && ind.boundaryNote?.trim() && (
+                    <p className="text-[11px] text-amber-900 mt-1.5 bg-amber-50/60 rounded-lg px-2 py-1">
+                      경계·혼합: {ind.boundaryNote}
+                    </p>
+                  )}
                   {ind.evidence && ind.evidence.length > 0 && (
-                    <div className="mt-1.5 space-y-0.5">
-                      {(isPremium
-                        ? ind.evidence
-                        : ind.evidence.slice(0, 2)
-                      ).map((e, i) => (
-                        <p key={i} className="text-xs text-gray-500 pl-1 leading-relaxed">
-                          • {typeof e === "object" ? JSON.stringify(e) : String(e)}
-                        </p>
-                      ))}
+                    <div className="mt-2 space-y-1">
+                      <p className="text-[10px] font-bold text-gray-500">
+                        이 축 근거 {isPremium ? `(≥3)` : ""}
+                      </p>
+                      {(isPremium ? ind.evidence : ind.evidence.slice(0, 2)).map(
+                        (e, i) => (
+                          <p
+                            key={i}
+                            className="text-xs text-gray-600 pl-1 leading-relaxed border-l-2 border-violet-100"
+                          >
+                            {typeof e === "object" ? JSON.stringify(e) : String(e)}
+                          </p>
+                        ),
+                      )}
                     </div>
                   )}
                 </div>
@@ -298,7 +412,94 @@ export default function ResultScreen({
         </GlassCard>
       )}
 
-      {/* 프리미엄: 대화 인용 하이라이트 */}
+      {/* 프리미엄: 1·2·3순위 비교 — 지표 직후 */}
+      {isPremium &&
+        alternativeTypes &&
+        (alternativeTypes.whyFirst?.trim() ||
+          alternativeTypes.second?.mbtiType ||
+          alternativeTypes.distinction?.trim()) && (
+        <GlassCard animate delay={3} className="mb-4">
+          <h3 className="font-extrabold text-gray-900 mb-2 flex items-center gap-2">
+            <span
+              className="w-7 h-7 rounded-xl flex items-center justify-center text-sm"
+              style={{ background: "#DDD6FE" }}
+            >
+              🔀
+            </span>
+            헷갈릴 수 있는 유형 비교
+          </h3>
+          <p className="text-[11px] text-gray-500 mb-3">
+            왜 {mbtiType}인지, 비슷한 다른 유형은 왜 아닌지 정리했어요.
+          </p>
+          <div className="rounded-2xl p-3 mb-3 bg-violet-50/50 border border-violet-100">
+            <p className="text-xs font-black text-violet-900 mb-1">1순위</p>
+            <p className="text-lg font-black tracking-widest text-gray-900">
+              {alternativeTypes.first?.mbtiType || mbtiType}
+            </p>
+            {alternativeTypes.first?.oneLiner?.trim() && (
+              <p className="text-xs text-gray-700 mt-1">
+                {alternativeTypes.first.oneLiner}
+              </p>
+            )}
+          </div>
+          {alternativeTypes.second?.mbtiType &&
+            alternativeTypes.second.mbtiType.length === 4 && (
+            <div className="mb-3 p-3 rounded-2xl bg-white/40 border border-white/60">
+              <p className="text-xs font-bold text-gray-800 mb-1">
+                2순위 후보 · {alternativeTypes.second.mbtiType}{" "}
+                <span className="font-normal text-gray-500">
+                  ({getMbtiMeta(alternativeTypes.second.mbtiType)?.title})
+                </span>
+              </p>
+              {alternativeTypes.second.shared?.trim() && (
+                <p className="text-[11px] text-gray-600 mb-1">
+                  공통점: {alternativeTypes.second.shared}
+                </p>
+              )}
+              {alternativeTypes.second.difference?.trim() && (
+                <p className="text-[11px] text-violet-800">
+                  최종에서 밀린 이유: {alternativeTypes.second.difference}
+                </p>
+              )}
+            </div>
+          )}
+          {alternativeTypes.third?.mbtiType &&
+            alternativeTypes.third.mbtiType.length === 4 && (
+            <div className="mb-3 p-3 rounded-2xl bg-white/30 border border-white/50">
+              <p className="text-xs font-bold text-gray-800 mb-1">
+                3순위 후보 · {alternativeTypes.third.mbtiType}{" "}
+                <span className="font-normal text-gray-500">
+                  ({getMbtiMeta(alternativeTypes.third.mbtiType)?.title})
+                </span>
+              </p>
+              {alternativeTypes.third.shared?.trim() && (
+                <p className="text-[11px] text-gray-600 mb-1">
+                  공통점: {alternativeTypes.third.shared}
+                </p>
+              )}
+              {alternativeTypes.third.difference?.trim() && (
+                <p className="text-[11px] text-violet-800">
+                  최종에서 밀린 이유: {alternativeTypes.third.difference}
+                </p>
+              )}
+            </div>
+          )}
+          {alternativeTypes.whyFirst?.trim() && (
+            <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line border-t border-violet-100 pt-3">
+              <span className="font-bold text-violet-900">최종 선택 이유 — </span>
+              {alternativeTypes.whyFirst}
+            </p>
+          )}
+          {!alternativeTypes.whyFirst?.trim() &&
+            alternativeTypes.distinction?.trim() && (
+            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+              {alternativeTypes.distinction}
+            </p>
+          )}
+        </GlassCard>
+      )}
+
+      {/* 프리미엄: 추가 인용 (보조) */}
       {isPremium && quotedInsights.length > 0 && (
         <GlassCard animate delay={2} className="mb-4">
           <h3 className="font-extrabold text-gray-900 mb-3 flex items-center gap-2">
@@ -308,10 +509,10 @@ export default function ResultScreen({
             >
               💬
             </span>
-            근거 인용 하이라이트
+            추가 대화 인용
           </h3>
           <p className="text-[11px] text-gray-500 mb-3">
-            캡처 속 표현을 짧게 인용했습니다. 실명·전화번호 등은 가명 처리했을 수 있어요.
+            지표 근거와 함께 보면 좋아요. 실명·전화번호 등은 가명 처리했을 수 있어요.
           </p>
           <div className="space-y-3">
             {quotedInsights.map((q, i) => (
@@ -331,31 +532,139 @@ export default function ResultScreen({
         </GlassCard>
       )}
 
-      {/* 프리미엄: 관계·소통 */}
-      {isPremium && relationshipAndCommunication?.summary && (
+      {/* 프리미엄: 관계·소통 (실전형) */}
+      {isPremium &&
+        relationshipAndCommunication &&
+        (relationshipAndCommunication.summary?.trim() ||
+          relationshipAndCommunication.whenInterested?.trim() ||
+          relationshipAndCommunication.whenUncomfortable?.trim() ||
+          relationshipAndCommunication.whenClose?.trim() ||
+          relationshipAndCommunication.inConflict?.trim() ||
+          relationshipAndCommunication.replyAndEmoji?.trim() ||
+          relationshipAndCommunication.contactPreference?.trim() ||
+          relationshipAndCommunication.tips?.length > 0) && (
         <GlassCard animate delay={2} className="mb-4">
-          <h3 className="font-extrabold text-gray-900 mb-3 flex items-center gap-2">
+          <h3 className="font-extrabold text-gray-900 mb-2 flex items-center gap-2">
             <span
               className="w-7 h-7 rounded-xl flex items-center justify-center text-sm"
               style={{ background: "#FBCFE8" }}
             >
               💕
             </span>
-            관계·소통
+            관계·소통 스타일
           </h3>
-          <p className="text-sm text-gray-700 leading-relaxed mb-3">
-            {relationshipAndCommunication.summary}
-          </p>
-          {relationshipAndCommunication.tips?.length > 0 && (
-            <ul className="space-y-1.5">
-              {relationshipAndCommunication.tips.map((t, i) => (
-                <li key={i} className="text-xs text-gray-600 flex gap-2">
-                  <span className="text-pink-500 font-bold">✓</span>
-                  <span>{t}</span>
-                </li>
-              ))}
-            </ul>
+          {relationshipAndCommunication.summary?.trim() && (
+            <p className="text-sm text-gray-800 leading-relaxed mb-4">
+              {relationshipAndCommunication.summary}
+            </p>
           )}
+          {[
+            {
+              k: "whenInterested",
+              label: "호감이 있을 때",
+              v: relationshipAndCommunication.whenInterested,
+            },
+            {
+              k: "whenUncomfortable",
+              label: "불편할 때",
+              v: relationshipAndCommunication.whenUncomfortable,
+            },
+            {
+              k: "whenClose",
+              label: "친해졌을 때",
+              v: relationshipAndCommunication.whenClose,
+            },
+            {
+              k: "inConflict",
+              label: "갈등·싸움",
+              v: relationshipAndCommunication.inConflict,
+            },
+            {
+              k: "replyAndEmoji",
+              label: "답장·이모티콘·말투",
+              v: relationshipAndCommunication.replyAndEmoji,
+            },
+            {
+              k: "contactPreference",
+              label: "연락 선호",
+              v: relationshipAndCommunication.contactPreference,
+            },
+          ]
+            .filter((x) => x.v?.trim())
+            .map((x) => (
+              <div
+                key={x.k}
+                className="mb-3 p-3 rounded-2xl bg-pink-50/40 border border-pink-100/80"
+              >
+                <p className="text-[11px] font-extrabold text-pink-900 mb-1">
+                  {x.label}
+                </p>
+                <p className="text-xs text-gray-800 leading-relaxed">{x.v}</p>
+              </div>
+            ))}
+          {relationshipAndCommunication.tips?.length > 0 && (
+            <div className="mt-2">
+              <p className="text-[11px] font-bold text-gray-600 mb-1.5">
+                연락할 때 참고
+              </p>
+              <ul className="space-y-1.5">
+                {relationshipAndCommunication.tips.map((t, i) => (
+                  <li key={i} className="text-xs text-gray-600 flex gap-2">
+                    <span className="text-pink-500 font-bold">✓</span>
+                    <span>{t}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </GlassCard>
+      )}
+
+      {/* 프리미엄: 실전 소통 팁 */}
+      {isPremium &&
+        practicalTips &&
+        (practicalTips.emotionVsDirect?.trim() ||
+          practicalTips.effectiveCommunication?.length > 0 ||
+          practicalTips.whenHurt?.length > 0 ||
+          practicalTips.conflictAvoid?.length > 0 ||
+          practicalTips.scheduling?.length > 0) && (
+        <GlassCard animate delay={2} className="mb-4 border border-emerald-100 bg-emerald-50/20">
+          <h3 className="font-extrabold text-gray-900 mb-3 flex items-center gap-2">
+            <span
+              className="w-7 h-7 rounded-xl flex items-center justify-center text-sm"
+              style={{ background: "#6EE7B7" }}
+            >
+              🎯
+            </span>
+            실전 소통 가이드
+          </h3>
+          {practicalTips.emotionVsDirect?.trim() && (
+            <p className="text-xs text-gray-800 mb-3 p-2 rounded-xl bg-white/50">
+              <span className="font-bold text-emerald-900">감정 vs 핵심 — </span>
+              {practicalTips.emotionVsDirect}
+            </p>
+          )}
+          {[
+            { title: "이렇게 말하면 잘 통할 수 있어요", items: practicalTips.effectiveCommunication },
+            { title: "서운함을 전할 때", items: practicalTips.whenHurt },
+            { title: "갈등 시 피하면 좋은 방식", items: practicalTips.conflictAvoid },
+            { title: "약속·일정·제안", items: practicalTips.scheduling },
+          ]
+            .filter((s) => s.items?.length > 0)
+            .map((s) => (
+              <div key={s.title} className="mb-3">
+                <p className="text-[11px] font-extrabold text-emerald-900 mb-1">
+                  {s.title}
+                </p>
+                <ul className="space-y-1">
+                  {s.items.map((line, i) => (
+                    <li key={i} className="text-xs text-gray-700">
+                      • {line}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
         </GlassCard>
       )}
 
@@ -475,32 +784,6 @@ export default function ResultScreen({
         </GlassCard>
       )}
 
-      {/* 프리미엄: 1순위 vs 2순위 후보 */}
-      {isPremium && alternativeTypes?.distinction?.trim() && (
-        <GlassCard animate delay={3} className="mb-4">
-          <h3 className="font-extrabold text-gray-900 mb-3 flex items-center gap-2">
-            <span
-              className="w-7 h-7 rounded-xl flex items-center justify-center text-sm"
-              style={{ background: "#DDD6FE" }}
-            >
-              🔀
-            </span>
-            1순위와 가까운 다른 후보
-          </h3>
-          {String(alternativeTypes.secondGuess || "")
-            .replace(/[^A-Za-z]/g, "")
-            .length >= 4 && (
-            <p className="text-xs font-bold text-violet-800 mb-2">
-              2순위 후보:{" "}
-              {String(alternativeTypes.secondGuess).slice(0, 4).toUpperCase()}
-            </p>
-          )}
-          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
-            {alternativeTypes.distinction}
-          </p>
-        </GlassCard>
-      )}
-
       {/* 프로필 분석 상세 (종합 모드 또는 프리미엄) */}
       {(isPremium || isMulti) && profile && (
         <GlassCard animate delay={4} className="mb-4">
@@ -578,8 +861,10 @@ export default function ResultScreen({
         </GlassCard>
       )}
 
-      {/* 프리미엄: 이 입력에서의 오판·주의 포인트 */}
-      {isPremium && cautionAndMisread?.points?.length > 0 && (
+      {/* 프리미엄: 오판 가능성 · 분석 한계 (신뢰 강화) */}
+      {isPremium &&
+        (cautionAndMisread?.points?.length > 0 ||
+          analysisLimitations?.points?.length > 0) && (
         <GlassCard animate delay={4} className="mb-4 border border-amber-200/80">
           <h3 className="font-extrabold text-gray-900 mb-3 flex items-center gap-2">
             <span
@@ -588,15 +873,24 @@ export default function ResultScreen({
             >
               🧭
             </span>
-            이 분석에서 특히 주의할 점
+            오판 가능성 · 이 분석의 한계
           </h3>
+          <p className="text-[11px] text-amber-950/90 mb-2">
+            숨기지 않고 적어 두었어요. 오히려 이런 설명이 있을 때 분석을 더 믿을 수 있답니다.
+          </p>
           <ul className="space-y-1.5">
-            {cautionAndMisread.points.map((p, i) => (
+            {[
+              ...(cautionAndMisread?.points ?? []),
+              ...(analysisLimitations?.points ?? []),
+            ].map((p, i) => (
               <li key={i} className="text-xs text-amber-900 leading-relaxed">
                 • {p}
               </li>
             ))}
           </ul>
+          <p className="text-[10px] text-gray-600 mt-3">
+            프로필 이미지·배경은 분위기 참고용이며, 결정적 근거는 대화 텍스트입니다.
+          </p>
         </GlassCard>
       )}
 
@@ -660,11 +954,11 @@ export default function ResultScreen({
               실제 성향과 다를 수 있어요.
             </p>
             <p className="text-sm text-gray-800 leading-relaxed mb-2">
-              4축 근거·말투 패턴·관계·소통까지{" "}
-              <span className="font-bold text-purple-900">더 정확하고 자세한 분석</span>
-              이 필요하시면, 유료{" "}
-              <span className="font-bold">프리미엄 리포트</span>로 진행해 보세요.
-              (캡처 최대 10장 · 메모 선택)
+              Premium은 카드 개수가 아니라{" "}
+              <span className="font-bold text-purple-900">
+                대화 근거·유형 비교·관계 실전 해석의 깊이
+              </span>
+              가 달라요. (캡처 최대 10장 · 메모 선택)
             </p>
             <p className="text-[11px] text-gray-600 leading-relaxed">
               아래 버튼을 누르면 프리미엄 탭으로 이동한 뒤 결제하고 심층 리포트를
@@ -683,8 +977,8 @@ export default function ResultScreen({
             💎 Premium 리포트로 이어가기
           </button>
           <p className="text-[11px] text-center text-gray-400 mt-2.5 px-1">
-            4축 상세 근거 · 관계·소통 해석 등 전체 리포트는 Premium에서 확인할 수
-            있어요
+            축별 대화 근거 3개+, 비슷한 유형 비교, 실전 소통 가이드는 Premium에서
+            열려요
           </p>
         </div>
       )}

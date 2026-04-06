@@ -15,28 +15,41 @@ function getSkillPrompt() {
   if (cachedSkillPrompt) return cachedSkillPrompt;
   try {
     cachedSkillPrompt = readFileSync(
-      join(process.cwd(), "mbti_skills.md"),
+      join(process.cwd(), "docs", "mbti_skills.md"),
       "utf-8",
     );
   } catch {
-    cachedSkillPrompt = "";
+    try {
+      cachedSkillPrompt = readFileSync(
+        join(process.cwd(), "mbti_skills.md"),
+        "utf-8",
+      );
+    } catch {
+      cachedSkillPrompt = "";
+    }
   }
   return cachedSkillPrompt;
 }
 
-/** Premium: 풀 리포트 — 지표·하이라이트·traits 등 (문구는 압축, 규칙은 동일) */
+/** Premium: 풀 리포트 — 근거·비교·실전 해석 중심 */
 function buildPremiumSystemPrompt() {
   const skill = getSkillPrompt();
   return `당신은 카카오톡 캡처·관찰 텍스트를 통합해 MBTI를 추론하는 전문 에이전트입니다.
 
 ${skill}
 
-## 프리미엄
-유료 리포트입니다. 지표(EI/SN/TF/JP)별 evidence **각 3개 이상**, highlights·traits는 풍부하게.
-추가 필드: **관계·소통**(relationshipAndCommunication), **일·학습·협업**(workAndRoutine), **오판·주의**(cautionAndMisread), **2순위 후보 구분**(alternativeTypes), **대화 인용+해석**(quotedInsights, 0~2개, 개인정보는 가명·짧게).
+## 프리미엄 리포트 원칙 (필수)
+1. **근거 공개**: 각 축(EI/SN/TF/JP)마다 캡처에서 온 **짧은 인용 또는 말투 패턴**을 evidence로 **3개 이상**. 형식 예: 「일단 계획부터」→ 실행·통제(J) 근거.
+2. **일반론 금지**: MBTI 교과서식 문장만 나열하지 말고, **이 입력에서만 나올 수 있는 해석**을 interpretation·summary에 담을 것.
+3. **확신도 과장 금지**: overall confidence는 보통 **52~85** 범위를 우선. 90 이상은 정말 압도적 근거가 있을 때만. confidenceReason으로 숫자 의미를 한 줄 설명.
+4. **경계·혼합**: T/F·S/N이 애매하면 indicators 해당 축에 boundaryNote에 "혼합형/경계형" 설명.
+5. **대안 비교**: 1·2·3순위 유형을 alternativeTypes에 채우고, 왜 1순위인지·왜 2·3이 아닌지 구체 비교.
+6. **관계 실전**: 호감/불편/친밀/갈등/답장·이모티콘/연락 선호를 relationshipAndCommunication 구조 필드에 채움.
+7. **한계**: analysisLimitations에 업무 대화 편향·캡처 부족·관계 맥락 등 솔직히 기술 (신뢰 상승 목적).
+8. **실전 팁**: practicalTips에 소통·서운함·갈등·일정 제안 등 실행 가능한 문장.
 
 ## 출력
-JSON만. evidence·각 요약은 한국어. conflicts는 충돌 있을 때만. confidence는 가이드 기준. 빈 필드는 null 또는 빈 배열.`;
+JSON만. 한국어. 빈 필드는 null 또는 []. 개인정보는 가명·최소 인용.`;
 }
 
 /** Free: 짧은 맛보기 전용 — 토큰 절약, 풀 지표 리포트 생성 금지 */
@@ -47,9 +60,10 @@ function buildFreeSystemPrompt() {
 ${skill}
 
 ## 분석 깊이 (무료 · 빠른 추정)
-이번 요청은 **무료 빠른 추정**입니다. 캡처 **최대 3장**만으로 압축 판단하므로 **오판 가능성**이 큽니다. **1·2·3순위 유형**을 모두 제시해 사용자가 범위를 이해하도록 하세요. **4축 지표별 상세(indicators)는 출력하지 마세요.**
-한 줄 요약·티저 불릿·잠금 미리보기 라벨만 제공하고, 구체적 심층 리포트는 유도하세요.
-확신도는 입력이 제한적이므로 보통 MEDIUM 또는 LOW를 우선 고려하세요.
+이번 요청은 **무료 빠른 추정**입니다. 캡처 **최대 3장**만으로 압축 판단하므로 **오판 가능성**이 큽니다. **1·2·3순위 유형**을 제시하되, 사용자에게는 **가까운 후보 1개(2순위)** 강조용으로 쓰입니다. **4축 지표별 상세(indicators)는 출력하지 마세요.**
+**evidenceBullets**에 캡처 기반 짧은 근거 2~3개(「인용」→ 한 줄 해석)를 반드시 넣어 "내 카톡을 봤다" 느낌을 주세요.
+한 줄 요약·티저·잠금 미리보기로 프리미엄 가치를 구체적으로 유도하세요.
+확신도는 입력이 제한적이므로 **52~78** 정도, confidenceLevel은 MEDIUM 또는 LOW 우선.
 
 ## 출력 규칙
 1. 반드시 아래 JSON 스키마에만 맞춰 응답하세요.
@@ -98,19 +112,50 @@ function buildPremiumUserParts({ targetName, memo, images }) {
 
   parts.push({
     text: `## 출력 (JSON만, 키 누락 금지 — 없으면 null/[])
-{"tier":"premium","mbtiType":"XXXX","confidence":0-100,"confidenceLevel":"HIGH|MEDIUM|LOW",
-"indicators":{"EI":{"result":"I|E","score":0-100,"confidence":0-100,"evidence":["≥3"]},
-"SN":{"result":"S|N","score":0-100,"confidence":0-100,"evidence":["≥3"]},
-"TF":{"result":"T|F","score":0-100,"confidence":0-100,"evidence":["≥3"]},
-"JP":{"result":"J|P","score":0-100,"confidence":0-100,"evidence":["≥3"]}},
-"highlights":{"chatPatterns":[4],"profileAnalysis":null,"behaviorAnalysis":null},
-"traits":[4],"tags":[],"conflicts":[],
+{"tier":"premium","mbtiType":"XXXX",
+"confidence":52-88,"confidenceLevel":"HIGH|MEDIUM|LOW","confidenceReason":"숫자가 이 정도인 이유 한 문장",
+"oneLineConclusion":"ESTJ / 구조와 실행 중심 … (유형 + 한 줄 성향)",
+"keyEvidenceSummary":[
+  {"snippet":"「짧은 인용 또는 패턴」","axis":"J","insight":"왜 이 결론에 쓰였는지 한 줄"},
+  {"snippet":"…","axis":"T","insight":"…"},
+  {"snippet":"…","axis":"E","insight":"…"}
+],
+"indicators":{
+"EI":{"result":"E","score":68,"confidence":70,"evidence":["≥3"],"interpretation":"","boundaryNote":null,"strengthLabel":"보통"},
+"SN":{"result":"S","score":55,"confidence":52,"evidence":["≥3"],"interpretation":"","boundaryNote":"애매하면 한 줄","strengthLabel":"낮음"},
+"TF":{"result":"T","score":62,"confidence":58,"evidence":["≥3"],"interpretation":"","boundaryNote":null,"strengthLabel":"보통"},
+"JP":{"result":"J","score":71,"confidence":75,"evidence":["≥3"],"interpretation":"","boundaryNote":null,"strengthLabel":"높음"}},
+"highlights":{"chatPatterns":[3,6],"profileAnalysis":null,"behaviorAnalysis":null},
+"traits":[3,6],"tags":[],"conflicts":[],
 "profile":{"mood":"","status":"","bg":"","score":0-100}|null,
-"relationshipAndCommunication":{"summary":"연애·친구 맥락 2~4문장","tips":["상대가 알면 좋은 점","소통 팁"]},
-"workAndRoutine":{"summary":"일·학습·협업 2~3문장","tips":["마감/피드백 등"]},
-"cautionAndMisread":{"points":["이 입력에서 오판되기 쉬운 점 1","2"]},
-"alternativeTypes":{"secondGuess":"XXXX","distinction":"1순위와 구별되는 근거 2~3문장"},
-"quotedInsights":[{"quote":"대화 짧은 인용(가능하면 익명)","note":"해석 한 줄"}]}`,
+"alternativeTypes":{
+"first":{"mbtiType":"XXXX","oneLiner":"1순위 한 줄"},
+"second":{"mbtiType":"YYYY","shared":"1순위와 공통점","difference":"왜 최종 선택에서 밀렸는지"},
+"third":{"mbtiType":"ZZZZ","shared":"…","difference":"…"},
+"whyFirst":"최종적으로 1순위를 택한 이유 2~4문장"
+},
+"relationshipAndCommunication":{
+"summary":"전체 해석형 2~4문장 (일반론 금지)",
+"whenInterested":"호감 있을 때 말투·행동",
+"whenUncomfortable":"불편할 때",
+"whenClose":"친해졌을 때",
+"inConflict":"싸울 때 반응",
+"replyAndEmoji":"답장/이모티콘/말투",
+"contactPreference":"연락 선호",
+"tips":["실전 팁"]
+},
+"practicalTips":{
+"effectiveCommunication":["이 사람에게 잘 통하는 말하기"],
+"whenHurt":["서운함 전달 시"],
+"conflictAvoid":["갈등 시 피할 것"],
+"scheduling":["약속·일정 제안"],
+"emotionVsDirect":"감정 토로 vs 핵심 전달 중 무엇이 더 잘 통하는지 한 줄"
+},
+"workAndRoutine":{"summary":"2~3문장","tips":["…"]},
+"cautionAndMisread":{"points":["이 입력에서의 오판 포인트"]},
+"analysisLimitations":{"points":["업무 편향","캡처 수","관계 맥락","프로필은 보조 근거"]},
+"quotedInsights":[{"quote":"짧은 인용","note":"해석"}],
+"emoji":"😀","title":"유형 한글 타이틀","color":"#hex"}`,
   });
 
   return parts;
@@ -137,20 +182,29 @@ function buildFreeUserParts({ targetName, images }) {
   parts.push({
     text: `\n## 출력 형식 (반드시 이 키만 사용)
 JSON만 출력하세요.
-mbtiType은 1순위와 반드시 동일하게 맞추세요. mbtiRankings는 서로 다른 유형 3개(1·2·3순위)를 채우세요.
+mbtiType은 1순위와 동일. mbtiRankings는 서로 다른 유형 3개(1·2·3순위).
+evidenceBullets: **캡처 근거 2~3개**, 각 항목은 {"snippet":"「짧은 인용」","insight":"한 줄 해석"} 형태 권장.
 {
   "tier": "free",
   "mbtiType": "XXXX",
   "mbtiRankings": [
-    { "rank": 1, "mbtiType": "XXXX", "hint": "1순위 한 줄 이유(15자 내)" },
-    { "rank": 2, "mbtiType": "YYYY", "hint": "2순위 후보 한 줄" },
-    { "rank": 3, "mbtiType": "ZZZZ", "hint": "3순위 후보 한 줄" }
+    { "rank": 1, "mbtiType": "XXXX", "hint": "1순위 한 줄" },
+    { "rank": 2, "mbtiType": "YYYY", "hint": "2순위 후보" },
+    { "rank": 3, "mbtiType": "ZZZZ", "hint": "3순위 후보" }
   ],
-  "confidence": 0-100,
-  "confidenceLevel": "HIGH|MEDIUM|LOW",
+  "confidence": 52-78,
+  "confidenceLevel": "MEDIUM|LOW",
   "summary": { "headline": "한 줄 헤드라인", "oneLiner": "부연 한 문장" },
-  "teaserBullets": ["티저1", "티저2", "티저3"],
-  "lockedPreview": { "labels": ["4축·상위후보 상세", "관계·갈등·소통 리포트", "맞춤 해석"] },
+  "evidenceBullets": [{"snippet":"「…」","insight":"…"},{"snippet":"「…」","insight":"…"}],
+  "teaserBullets": ["프리미엄에서 열리는 깊이 티저1", "티저2", "티저3"],
+  "lockedPreview": {
+    "labels": [
+      "4축마다 대화 근거 3개+ · 해석",
+      "1·2·3순위 유형 비교와 선택 이유",
+      "관계·갈등·연락 스타일 실전 해석",
+      "실전 소통 팁 · 오판 가능성 안내"
+    ]
+  },
   "tags": ["#태그1", "#태그2"]
 }`,
   });

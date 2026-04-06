@@ -18,6 +18,7 @@ import {
   ANALYSIS_MODE,
   normalizeAnalysisMode,
 } from "@/lib/analysis-tier";
+import { softenOverallConfidenceForDisplay } from "@/lib/result-confidence";
 
 export default function HomeContent() {
   const [isMounted, setIsMounted] = useState(false);
@@ -65,20 +66,88 @@ export default function HomeContent() {
       .filter((x) => x.mbtiType.length === 4)
       .sort((a, b) => a.rank - b.rank);
 
+    const rawConf = Number(result.confidence);
+    const confidence = Number.isFinite(rawConf) ? Math.round(rawConf) : 0;
+
     return {
       mbtiType: result.mbtiType || "XXXX",
       emoji: result.emoji || "🤔",
       title: result.title || "",
       color: result.color || "#FEE500",
-      confidence: result.confidence ?? 0,
+      confidence,
+      confidenceDisplay: softenOverallConfidenceForDisplay(confidence),
       confidenceLevel: result.confidenceLevel || "LOW",
+      confidenceReason:
+        typeof result.confidenceReason === "string"
+          ? result.confidenceReason
+          : "",
+      oneLineConclusion:
+        typeof result.oneLineConclusion === "string"
+          ? result.oneLineConclusion
+          : "",
+      keyEvidenceSummary: Array.isArray(result.keyEvidenceSummary)
+        ? result.keyEvidenceSummary
+            .filter((x) => x && typeof x === "object")
+            .map((x) => ({
+              snippet: typeof x.snippet === "string" ? x.snippet : "",
+              axis:
+                typeof x.axis === "string"
+                  ? x.axis.replace(/[^A-Z]/gi, "").slice(0, 2).toUpperCase()
+                  : "",
+              insight: typeof x.insight === "string" ? x.insight : "",
+            }))
+            .filter((x) => x.snippet || x.insight)
+        : [],
       tier,
       summary: result.summary || null,
       teaserBullets: Array.isArray(result.teaserBullets)
         ? result.teaserBullets
         : [],
+      evidenceBullets: Array.isArray(result.evidenceBullets)
+        ? result.evidenceBullets.map((x) =>
+            typeof x === "object" && x !== null
+              ? {
+                  snippet:
+                    typeof x.snippet === "string" ? x.snippet : String(x),
+                  insight:
+                    typeof x.insight === "string" ? x.insight : "",
+                }
+              : { snippet: String(x), insight: "" },
+          )
+        : [],
       lockedPreview: result.lockedPreview || null,
-      indicators: result.indicators || null,
+      indicators: (() => {
+        const ind = result.indicators;
+        if (!ind || typeof ind !== "object") return null;
+        const keys = ["EI", "SN", "TF", "JP"];
+        const out = {};
+        for (const k of keys) {
+          const v = ind[k];
+          if (!v || typeof v !== "object") continue;
+          const evidence = Array.isArray(v.evidence)
+            ? v.evidence.map((e) => String(e))
+            : [];
+          out[k] = {
+            result: String(v.result || "").slice(0, 1).toUpperCase(),
+            score: Math.min(
+              100,
+              Math.max(0, Math.round(Number(v.score) || 0)),
+            ),
+            confidence: Math.min(
+              100,
+              Math.max(0, Math.round(Number(v.confidence) || 0)),
+            ),
+            evidence,
+            interpretation:
+              typeof v.interpretation === "string" ? v.interpretation : "",
+            boundaryNote:
+              typeof v.boundaryNote === "string" ? v.boundaryNote : "",
+            strengthLabel:
+              typeof v.strengthLabel === "string" ? v.strengthLabel : "",
+          };
+        }
+        return Object.keys(out).length ? out : null;
+      })(),
       highlights: result.highlights || {},
       traits: Array.isArray(result.traits) ? result.traits : [],
       tags: Array.isArray(result.tags) ? result.tags : [],
@@ -95,15 +164,28 @@ export default function HomeContent() {
       relationshipAndCommunication:
         result.relationshipAndCommunication &&
         typeof result.relationshipAndCommunication === "object"
-          ? {
-              summary:
-                typeof result.relationshipAndCommunication.summary === "string"
-                  ? result.relationshipAndCommunication.summary
-                  : "",
-              tips: Array.isArray(result.relationshipAndCommunication.tips)
-                ? result.relationshipAndCommunication.tips.map(String)
-                : [],
-            }
+          ? (() => {
+              const r = result.relationshipAndCommunication;
+              return {
+                summary: typeof r.summary === "string" ? r.summary : "",
+                tips: Array.isArray(r.tips) ? r.tips.map(String) : [],
+                whenInterested:
+                  typeof r.whenInterested === "string" ? r.whenInterested : "",
+                whenUncomfortable:
+                  typeof r.whenUncomfortable === "string"
+                    ? r.whenUncomfortable
+                    : "",
+                whenClose: typeof r.whenClose === "string" ? r.whenClose : "",
+                inConflict:
+                  typeof r.inConflict === "string" ? r.inConflict : "",
+                replyAndEmoji:
+                  typeof r.replyAndEmoji === "string" ? r.replyAndEmoji : "",
+                contactPreference:
+                  typeof r.contactPreference === "string"
+                    ? r.contactPreference
+                    : "",
+              };
+            })()
           : null,
       workAndRoutine:
         result.workAndRoutine && typeof result.workAndRoutine === "object"
@@ -126,17 +208,91 @@ export default function HomeContent() {
                 : [],
             }
           : null,
-      alternativeTypes:
-        result.alternativeTypes && typeof result.alternativeTypes === "object"
+      practicalTips:
+        result.practicalTips && typeof result.practicalTips === "object"
           ? {
-              secondGuess: String(
-                result.alternativeTypes.secondGuess || "",
-              ).toUpperCase(),
-              distinction:
-                typeof result.alternativeTypes.distinction === "string"
-                  ? result.alternativeTypes.distinction
+              effectiveCommunication: Array.isArray(
+                result.practicalTips.effectiveCommunication,
+              )
+                ? result.practicalTips.effectiveCommunication.map(String)
+                : [],
+              whenHurt: Array.isArray(result.practicalTips.whenHurt)
+                ? result.practicalTips.whenHurt.map(String)
+                : [],
+              conflictAvoid: Array.isArray(result.practicalTips.conflictAvoid)
+                ? result.practicalTips.conflictAvoid.map(String)
+                : [],
+              scheduling: Array.isArray(result.practicalTips.scheduling)
+                ? result.practicalTips.scheduling.map(String)
+                : [],
+              emotionVsDirect:
+                typeof result.practicalTips.emotionVsDirect === "string"
+                  ? result.practicalTips.emotionVsDirect
                   : "",
             }
+          : null,
+      analysisLimitations:
+        result.analysisLimitations &&
+        typeof result.analysisLimitations === "object" &&
+        Array.isArray(result.analysisLimitations.points)
+          ? { points: result.analysisLimitations.points.map(String) }
+          : null,
+      alternativeTypes:
+        result.alternativeTypes && typeof result.alternativeTypes === "object"
+          ? (() => {
+              const a = result.alternativeTypes;
+              const clean4 = (s) =>
+                String(s || "")
+                  .toUpperCase()
+                  .replace(/[^A-Z]/g, "")
+                  .slice(0, 4);
+              const mbti = clean4(result.mbtiType);
+              return {
+                secondGuess: clean4(a.secondGuess || a.second?.mbtiType),
+                distinction:
+                  typeof a.distinction === "string" ? a.distinction : "",
+                whyFirst:
+                  typeof a.whyFirst === "string" ? a.whyFirst : "",
+                first:
+                  a.first && typeof a.first === "object"
+                    ? {
+                        mbtiType: clean4(a.first.mbtiType) || mbti,
+                        oneLiner:
+                          typeof a.first.oneLiner === "string"
+                            ? a.first.oneLiner
+                            : "",
+                      }
+                    : { mbtiType: mbti, oneLiner: "" },
+                second:
+                  a.second && typeof a.second === "object"
+                    ? {
+                        mbtiType: clean4(a.second.mbtiType),
+                        shared:
+                          typeof a.second.shared === "string"
+                            ? a.second.shared
+                            : "",
+                        difference:
+                          typeof a.second.difference === "string"
+                            ? a.second.difference
+                            : "",
+                      }
+                    : null,
+                third:
+                  a.third && typeof a.third === "object"
+                    ? {
+                        mbtiType: clean4(a.third.mbtiType),
+                        shared:
+                          typeof a.third.shared === "string"
+                            ? a.third.shared
+                            : "",
+                        difference:
+                          typeof a.third.difference === "string"
+                            ? a.third.difference
+                            : "",
+                      }
+                    : null,
+              };
+            })()
           : null,
       quotedInsights: Array.isArray(result.quotedInsights)
         ? result.quotedInsights
