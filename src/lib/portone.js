@@ -1,3 +1,10 @@
+"use client";
+
+/**
+ * 클라이언트 전용. 동적 import() 청크는 Webpack HMR과 충돌할 수 있어 정적 import 사용.
+ */
+import PortOne from "@portone/browser-sdk/v2";
+
 const STORE_ID = process.env.NEXT_PUBLIC_PORTONE_STORE_ID;
 const CHANNEL_KEY = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY;
 const PRICE = 1900;
@@ -8,8 +15,6 @@ const PRICE = 1900;
  * @returns {Promise<{paymentId: string} | null>} 결제 성공 시 paymentId, 실패/취소 시 null
  */
 export async function requestPayment(deviceId) {
-  const PortOne = await import("@portone/browser-sdk/v2");
-
   const paymentId = `mbti-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   const response = await PortOne.requestPayment({
@@ -32,7 +37,6 @@ export async function requestPayment(deviceId) {
     return null;
   }
 
-  // V2 응답은 paymentId / id / payment.id 등 필드명이 버전에 따라 다를 수 있음 — 서버 검증 GET과 동일한 ID 필요
   const resolvedPaymentId =
     response.paymentId ??
     response.id ??
