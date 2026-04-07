@@ -73,6 +73,7 @@ export default function ResultScreen({
     axisAnalysis: rawAxisAnalysis,
     candidateTypes,
     boundaryNote,
+    analysisExplanation,
     communicationTips: rawCommunicationTips,
     profileImageNote,
   } = result;
@@ -89,10 +90,14 @@ export default function ResultScreen({
     legacyIndicatorsToAxisAnalysis(indicators),
   );
 
+  const rootConfForCandidates =
+    confidenceDisplay != null ? confidenceDisplay : confidence;
+
   const candidateRows = resolveCandidateRows(
     candidateTypes,
     mbtiRankings,
     mbtiType,
+    rootConfForCandidates,
   );
 
   const useEvidenceLayout = shouldUseEvidenceLayout(
@@ -116,8 +121,14 @@ export default function ResultScreen({
     cautionAndMisread,
   );
 
-  const showLimitationsInEvidence =
-    useEvidenceLayout && limitationLinesAll.length > 0;
+  const analysisExplanationText =
+    typeof analysisExplanation === "string"
+      ? analysisExplanation.trim()
+      : "";
+
+  const showAnalysisAboutBlock =
+    useEvidenceLayout &&
+    (limitationLinesAll.length > 0 || analysisExplanationText.length > 0);
 
   const displayConf =
     confidenceDisplay != null ? confidenceDisplay : confidence;
@@ -383,38 +394,51 @@ export default function ResultScreen({
             </div>
           )}
 
-          {/* 3. 후보 3개 */}
+          {/* 3. 후보 3개 — 세로 목록 + 순위별 신뢰도 */}
           {candidateRows.length > 0 && (
             <div>
               <h3 className="font-extrabold text-gray-900 mb-3 text-sm flex items-center gap-2">
                 <span>🔀</span> 유력 MBTI 후보
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="flex flex-col gap-3">
                 {candidateRows.map((row, idx) => {
                   const meta = getMbtiMeta(row.type);
                   const isFirst = row.rank === 1 || idx === 0;
+                  const confPct =
+                    typeof row.confidence === "number"
+                      ? row.confidence
+                      : null;
                   return (
                     <GlassCard
                       key={`${row.type}-${row.rank}`}
                       animate
-                      className={`!p-3 flex flex-col items-center text-center transition-transform ${
+                      className={`!p-4 text-left transition-transform ${
                         isFirst
-                          ? "ring-2 ring-offset-2 ring-violet-400 scale-[1.02] bg-violet-50/40"
-                          : "opacity-95 scale-95"
+                          ? "ring-2 ring-offset-2 ring-violet-400 bg-violet-50/40"
+                          : "opacity-[0.98]"
                       }`}
                     >
-                      <span className="text-[10px] font-bold text-gray-500 mb-1">
-                        {row.rank}순위
-                      </span>
-                      <span className="text-2xl mb-1">{meta?.emoji}</span>
-                      <p
-                        className={`font-black tracking-widest ${
-                          isFirst ? "text-xl" : "text-lg"
-                        } text-gray-900`}
-                      >
-                        {row.type}
-                      </p>
-                      <p className="text-[10px] text-gray-500 mt-1 line-clamp-3">
+                      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 mb-2">
+                        <span className="text-xs font-bold text-gray-500">
+                          {row.rank}위
+                        </span>
+                        <span className="text-xl" aria-hidden>
+                          {meta?.emoji}
+                        </span>
+                        <span
+                          className={`font-black tracking-widest text-gray-900 ${
+                            isFirst ? "text-xl" : "text-lg"
+                          }`}
+                        >
+                          {row.type}
+                        </span>
+                        {confPct != null && (
+                          <span className="text-sm font-bold text-violet-700">
+                            (신뢰도 {confPct}%)
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-800 leading-relaxed">
                         {row.reason || "—"}
                       </p>
                     </GlassCard>
@@ -464,23 +488,41 @@ export default function ResultScreen({
             </GlassCard>
           )}
 
-          {/* 6. 분석 한계 */}
-          {showLimitationsInEvidence && (
+          {/* 6. 분석에 대한 설명 (순위 근거 + 한계) */}
+          {showAnalysisAboutBlock && (
             <div className="rounded-2xl p-4 bg-gray-100/80 border border-gray-200/80">
-              <p className="text-[11px] font-bold text-gray-600 mb-2">
-                분석 한계
+              <p className="text-sm font-bold text-gray-800 mb-2">
+                분석에 대한 설명
               </p>
-              <p className="text-[11px] text-gray-500 mb-3 leading-relaxed">
-                이 분석은 제한된 데이터를 기반으로 한 추정이에요. 아래 내용을
-                함께 참고해 주세요.
+              <p className="text-sm text-gray-600 mb-3 leading-relaxed">
+                이 분석은 제한된 데이터를 기반으로 한 추정이에요. 아래에서는
+                1~3순위 후보가 왜 이렇게 제시되었는지와, 해석 시 알아 두면 좋은
+                한계를 함께 안내합니다.
               </p>
-              <ul className="space-y-1.5">
-                {limitationLinesAll.map((line, i) => (
-                  <li key={i} className="text-xs text-gray-600 leading-relaxed">
-                    · {line}
-                  </li>
-                ))}
-              </ul>
+              {analysisExplanationText.length > 0 && (
+                <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap mb-4">
+                  {analysisExplanationText}
+                </p>
+              )}
+              {limitationLinesAll.length > 0 && (
+                <>
+                  {analysisExplanationText.length > 0 && (
+                    <p className="text-xs font-bold text-gray-600 mb-2">
+                      추가로 참고할 점
+                    </p>
+                  )}
+                  <ul className="space-y-2">
+                    {limitationLinesAll.map((line, i) => (
+                      <li
+                        key={i}
+                        className="text-sm text-gray-700 leading-relaxed pl-1 border-l-2 border-gray-300"
+                      >
+                        {line}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
             </div>
           )}
 
@@ -1266,7 +1308,7 @@ export default function ResultScreen({
 
       {/* 프리미엄: 오판 가능성 · 분석 한계 — 근거 블록에 한계를 넣었으면 생략 */}
       {isPremium &&
-        !showLimitationsInEvidence &&
+        !showAnalysisAboutBlock &&
         (cautionAndMisread?.points?.length > 0 ||
           analysisLimitations?.points?.length > 0 ||
           (typeof analysisLimitations === "string" &&

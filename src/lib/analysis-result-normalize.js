@@ -88,11 +88,18 @@ function candidateTypesToRankings(candidateTypes) {
   const sorted = [...candidateTypes].sort(
     (a, b) => (Number(a.rank) || 99) - (Number(b.rank) || 99),
   );
-  return sorted.slice(0, 3).map((c, i) => ({
-    rank: Number(c.rank) || i + 1,
-    mbtiType: normalizeType(c.type),
-    hint: String(c.reason ?? "").trim(),
-  }));
+  return sorted.slice(0, 3).map((c, i) => {
+    const cc = Number(c.confidence);
+    const row = {
+      rank: Number(c.rank) || i + 1,
+      mbtiType: normalizeType(c.type),
+      hint: String(c.reason ?? "").trim(),
+    };
+    if (Number.isFinite(cc)) {
+      row.confidence = clampNum(cc, 0, 100);
+    }
+    return row;
+  });
 }
 
 function observedToEvidenceBullets(observed) {

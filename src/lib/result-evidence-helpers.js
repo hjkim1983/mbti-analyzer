@@ -10,19 +10,49 @@ export function normalizeMbtiCode(t) {
   return MBTI_RE.test(u) ? u : "";
 }
 
+function clampConf(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return null;
+  return Math.min(100, Math.max(0, Math.round(x)));
+}
+
 /**
- * candidateTypes 우선, 없으면 mbtiRankings·mbtiType으로 후보 목록 생성
+ * candidateTypes 우선, 없으면 mbtiRankings·mbtiType으로 후보 목록 생성.
+ * 후보별 confidence가 없으면 종합 confidence(rootConf)를 기준으로 순위별로 감소 추정.
  */
-export function resolveCandidateRows(candidateTypes, mbtiRankings, mbtiType) {
+export function resolveCandidateRows(
+  candidateTypes,
+  mbtiRankings,
+  mbtiType,
+  rootConfidence,
+) {
+  const base = clampConf(rootConfidence) ?? 62;
+
+  const withConfidence = (row, indexZero) => {
+    const explicit = clampConf(row.confidence ?? row.confidenceScore);
+    if (explicit != null) return { ...row, confidence: explicit };
+    const step = [0, 12, 22][indexZero] ?? 12 * indexZero;
+    return {
+      ...row,
+      confidence: Math.max(28, base - step),
+    };
+  };
+
   if (Array.isArray(candidateTypes) && candidateTypes.length > 0) {
     return [...candidateTypes]
       .sort((a, b) => (Number(a.rank) || 99) - (Number(b.rank) || 99))
       .slice(0, 3)
-      .map((c) => ({
-        type: normalizeMbtiCode(String(c.type ?? "")) || "XXXX",
-        rank: Number(c.rank) || 1,
-        reason: String(c.reason ?? "").trim(),
-      }));
+      .map((c, i) =>
+        withConfidence(
+          {
+            type: normalizeMbtiCode(String(c.type ?? "")) || "XXXX",
+            rank: Number(c.rank) || i + 1,
+            reason: String(c.reason ?? "").trim(),
+            confidence: c.confidence,
+          },
+          i,
+        ),
+      );
   }
   const rows = [];
   if (Array.isArray(mbtiRankings)) {
@@ -33,6 +63,7 @@ export function resolveCandidateRows(candidateTypes, mbtiRankings, mbtiType) {
           type: code,
           rank: Number(r.rank) || rows.length + 1,
           reason: String(r.hint ?? "").trim(),
+          confidence: r.confidence,
         });
     }
   }
@@ -40,7 +71,7 @@ export function resolveCandidateRows(candidateTypes, mbtiRankings, mbtiType) {
     const one = normalizeMbtiCode(mbtiType);
     if (one) rows.push({ type: one, rank: 1, reason: "추정 유형" });
   }
-  return rows;
+  return rows.map((row, i) => withConfidence(row, i));
 }
 
 /**

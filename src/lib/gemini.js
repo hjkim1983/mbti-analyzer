@@ -51,8 +51,8 @@ ${skill}
 2. 관찰 가능한 언어·행동 신호를 최소 5개 추출한다.
 3. 제공된 맥락(관계, 대화 분위기, 태그, 메모)을 판별하고 분석에 반영한다.
 4. E/I, S/N, T/F, J/P 각 축에 대해 찬성·반대 근거를 함께 기술한다.
-5. 가장 유력한 MBTI 후보를 3개(rank 1~3) 제시한다(단일 확정 문구는 쓰지 않는다).
-6. 애매한 축·오판 가능성·분석 한계를 명시한다.
+5. 가장 유력한 MBTI 후보를 3개(rank 1~3) 제시한다(단일 확정 문구는 쓰지 않는다). 각 후보에 **confidence**(0~100, 해당 순위 추측 신뢰도, 1순위가 가장 높게)를 넣는다.
+6. **analysisExplanation**에 1~3순위를 이렇게 둔 이유(축·맥락·대화 신호)와 분석 한계를 4~8문장으로 서술한다. 애매한 축·오판 가능성은 boundaryNote·analysisLimitations에도 반영한다.
 
 ## 핵심 규칙
 - 한 가지 MBTI만 확정하지 말고 후보 2~3개를 제시한다.
@@ -71,10 +71,10 @@ function buildFreeSystemPrompt() {
 
 ## 분석 순서
 1. 말풍선·프로필·맥락 식별 → 2. 관찰 신호 5개 이상 → 3. 맥락(관계·분위기·태그) 반영
-4. 4축 각각 찬성·반대 근거 → 5. 후보 MBTI 3개 → 6. 한계·오판 요인
+4. 4축 각각 찬성·반대 근거 → 5. 후보 MBTI 3개(순위별 confidence 포함) → 6. analysisExplanation(순위 선정 이유+한계) → 7. 한계·오판 요인
 
 ## 규칙
-- 단일 유형 확정 금지. 후보 3개(candidateTypes rank 1~3).
+- 단일 유형 확정 금지. 후보 3개(candidateTypes rank 1~3, 각각 confidence 0~100).
 - 각 축에 forEvidence·againstEvidence를 함께 적는다.
 - indicators·프리미엄 전용 필드(관계 장문 등)는 넣지 않는다.
 - confidence는 축 근거를 반영해 **52~78** 정도, confidenceLevel은 MEDIUM|LOW 우선.
@@ -175,10 +175,11 @@ function buildPremiumUserParts({
     "JP": { "result": "J|P", "confidence": 0-100, "forEvidence": [], "againstEvidence": [] }
   },
   "candidateTypes": [
-    { "type": "XXXX", "rank": 1, "reason": "한 줄" },
-    { "type": "YYYY", "rank": 2, "reason": "한 줄" },
-    { "type": "ZZZZ", "rank": 3, "reason": "한 줄" }
+    { "type": "XXXX", "rank": 1, "confidence": 60, "reason": "이 순위인 근거(2~4문장)" },
+    { "type": "YYYY", "rank": 2, "confidence": 48, "reason": "…" },
+    { "type": "ZZZZ", "rank": 3, "confidence": 38, "reason": "…" }
   ],
+  "analysisExplanation": "1~3순위 선정 이유와 분석 한계를 함께 서술(4~8문장)",
   "boundaryNote": "가장 애매한 축·맥락 요인",
   "analysisLimitations": "문자열 한 덩어리(데이터 부족·단일 상대 등)",
   "communicationTips": ["팁1", "팁2", "팁3"],
@@ -193,7 +194,7 @@ function buildPremiumUserParts({
   "tags": ["#태그"]
 }
 
-축 confidence는 해당 축 판단 강도(0~100). 후보 3개 type은 서로 다르게. 빈 값 null/[].`,
+축 confidence는 해당 축 판단 강도(0~100). 후보 3개 type은 서로 다르게. 후보별 confidence는 루트 confidence와 조화(1순위 ≥ 2순위 ≥ 3순위). 빈 값 null/[].`,
   });
 
   return parts;
@@ -247,10 +248,11 @@ function buildFreeUserParts({
     "JP": { "result": "J|P", "confidence": 0-100, "forEvidence": [], "againstEvidence": [] }
   },
   "candidateTypes": [
-    { "type": "XXXX", "rank": 1, "reason": "한 줄" },
-    { "type": "YYYY", "rank": 2, "reason": "한 줄" },
-    { "type": "ZZZZ", "rank": 3, "reason": "한 줄" }
+    { "type": "XXXX", "rank": 1, "confidence": 58, "reason": "근거 요약" },
+    { "type": "YYYY", "rank": 2, "confidence": 46, "reason": "…" },
+    { "type": "ZZZZ", "rank": 3, "confidence": 36, "reason": "…" }
   ],
+  "analysisExplanation": "1~3순위 선정 이유와 분석 한계(짧게 3~6문장)",
   "boundaryNote": "애매한 축·맥락 요인",
   "analysisLimitations": "분석 한계(한 문단)",
   "communicationTips": ["팁1", "팁2", "팁3"],
