@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useRef, useCallback } from "react";
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import UploadCard from "@/components/UploadCard";
@@ -23,14 +23,9 @@ import { softenOverallConfidenceForDisplay } from "@/lib/result-confidence";
 import { sanitizeAlternativeTypes } from "@/lib/alternative-types-sanitize";
 
 export default function HomeContent() {
-  const [isMounted, setIsMounted] = useState(false);
   const analysis = useAnalysis();
   const payment = usePayment();
   const formTopRef = useRef(null);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
 
   const freeRemaining =
     analysis.freeCount != null
@@ -261,14 +256,6 @@ export default function HomeContent() {
       formTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 80);
   }, [analysis]);
-
-  if (!isMounted) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 rounded-full border-4 border-amber-300 border-t-amber-500 animate-spin" />
-      </div>
-    );
-  }
 
   const normalizedResult = normalizeResult(analysis.result);
 
