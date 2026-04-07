@@ -22,8 +22,15 @@ export const maxDuration = 60;
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { deviceId, targetName, memo, images, paymentId, mode: rawMode } =
-      body;
+    const {
+      deviceId,
+      targetName,
+      memo,
+      images,
+      paymentId,
+      mode: rawMode,
+      tags: rawTags,
+    } = body;
 
     const mode = normalizeAnalysisMode(rawMode);
 
@@ -99,6 +106,13 @@ export async function POST(request) {
 
     const isPaid = needPay;
 
+    const contextTags = Array.isArray(rawTags)
+      ? rawTags
+          .map((t) => (typeof t === "string" ? t.trim() : ""))
+          .filter(Boolean)
+          .slice(0, 12)
+      : [];
+
     let result;
     try {
       result = await callGemini({
@@ -106,6 +120,7 @@ export async function POST(request) {
         memo: memoTrim,
         images: imagesForGemini,
         mode,
+        tags: mode === ANALYSIS_MODE.FREE ? contextTags : [],
       });
     } catch (err) {
       if (err.message === "ANALYSIS_TIMEOUT") {

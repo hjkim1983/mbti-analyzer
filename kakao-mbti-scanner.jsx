@@ -1,108 +1,240 @@
-import { useState, useRef } from "react";
+"use client";
 
-const MBTI_DATA = [
-  {
-    type: "ENFP", emoji: "🌟", title: "열정적인 활동가", color: "#FF6B6B",
-    traits: ["이모티콘 과다 사용자 🎉", "긴 문장 + 많은 느낌표!!", "대화 주제 빠르게 전환", "공감 리액션 마스터"],
-    tags: ["#활발", "#공감왕", "#즉흥적"],
-    profile: { mood: "밝고 긍정적인 에너지", status: "재밌는 밈이나 노래 가사", bg: "컬러풀하거나 활동적인 사진", score: 88 },
-  },
-  {
-    type: "INTJ", emoji: "🧠", title: "전략적 분석가", color: "#4ECDC4",
-    traits: ["짧고 핵심만 전달", "이모티콘 거의 없음", "논리적 문장 구조", "답장 텀이 긴 편"],
-    tags: ["#논리적", "#계획적", "#독립적"],
-    profile: { mood: "차분하고 신중한 느낌", status: "상태 메시지 없거나 짧은 한마디", bg: "심플하거나 풍경 사진", score: 74 },
-  },
-  {
-    type: "INFJ", emoji: "🌿", title: "선의의 옹호자", color: "#A29BFE",
-    traits: ["감정 표현이 섬세함", "긴 글로 마음 전달", "공감하는 말투", "깊은 주제 선호"],
-    tags: ["#공감", "#진심", "#내성적"],
-    profile: { mood: "감성적이고 내면이 풍부한", status: "시구나 감성적인 문장", bg: "자연이나 감성 사진", score: 92 },
-  },
-  {
-    type: "ESTP", emoji: "⚡", title: "활동적인 모험가", color: "#FD79A8",
-    traits: ["빠른 답장 속도", "직설적인 표현", "짧은 메시지 선호", "유머 코드 탑재"],
-    tags: ["#즉흥", "#현실적", "#재치있음"],
-    profile: { mood: "활기차고 자신감 넘치는", status: "유머러스하거나 없음", bg: "활동적인 아웃도어 사진", score: 85 },
-  },
-];
+import { useState, useRef, useCallback } from "react";
+import { getDeviceId } from "./src/lib/device-id.js";
+import { fileToBase64 } from "./src/lib/image-utils.js";
+import { ANALYSIS_MODE, MAX_IMAGES_FREE } from "./src/lib/analysis-tier.js";
+import { getLoadingSteps } from "./src/constants/loading-steps.js";
 
 const QUICK_TAGS = [
-  "말이 많아요", "말이 적어요", "리액션이 과해요", "감정 표현 잘 함",
-  "논리적으로 말함", "즉흥적인 편", "계획적인 편", "공감을 잘 해줘요",
-  "유머 감각 있음", "진지한 편", "답장이 빨라요", "답장이 느려요",
+  "말이 많아요",
+  "말이 적어요",
+  "리액션이 과해요",
+  "감정 표현 잘 함",
+  "논리적으로 말함",
+  "즉흥적인 편",
+  "계획적인 편",
+  "공감을 잘 해줘요",
+  "유머 감각 있음",
+  "진지한 편",
+  "답장이 빨라요",
+  "답장이 느려요",
 ];
+
+/**
+ * /api/analyze 무료 응답 → 기존 결과 카드 UI 형태로 매핑
+ * (free 스키마는 evidenceBullets·summary 중심, premium은 traits·profile 풍부)
+ */
+function mapApiToCardResult(d) {
+  const evidence = Array.isArray(d.evidenceBullets) ? d.evidenceBullets : [];
+  const traitsFromEvidence = evidence
+    .map((b) => (b && (b.insight || b.snippet)) || "")
+    .filter(Boolean);
+  const traits =
+    Array.isArray(d.traits) && d.traits.length > 0
+      ? d.traits
+      : traitsFromEvidence.length > 0
+        ? traitsFromEvidence
+        : [
+            d.summary?.oneLiner ||
+              d.summary?.headline ||
+              "캡처 기반 추정 결과를 확인해 주세요",
+          ];
+
+  const tagList =
+    Array.isArray(d.tags) && d.tags.length > 0 ? d.tags : ["#빠른추정"];
+
+  const conf = Number(d.confidence) || 70;
+  const profile =
+    d.profile && typeof d.profile === "object" && !Array.isArray(d.profile)
+      ? {
+          mood: d.profile.mood || d.profile.overallMood || "—",
+          status: d.profile.status || d.profile.statusMessage || "—",
+          bg: d.profile.bg || d.profile.backgroundTaste || "—",
+          score:
+            typeof d.profile.score === "number"
+              ? d.profile.score
+              : Math.min(95, Math.max(50, Math.round(conf))),
+        }
+      : {
+          mood: d.summary?.headline || "요약",
+          status: d.summary?.oneLiner || "—",
+          bg: "캡처 기반",
+          score: Math.min(95, Math.max(50, Math.round(conf))),
+        };
+
+  return {
+    type: d.mbtiType || d.type,
+    emoji: d.emoji || "🧠",
+    title: d.title || "유형 분석",
+    color: d.color || "#6366F1",
+    traits,
+    tags: tagList,
+    profile,
+  };
+}
 
 export default function App() {
   const [stage, setStage] = useState("main");
   const [isDragging, setIsDragging] = useState(false);
+  /** { file, preview, name } — API용 base64 생성 */
   const [images, setImages] = useState([]);
   const [targetName, setTargetName] = useState("");
+  /** 직접 작성란 — 무료 API 규칙상 전송하지 않음(비어 있어야 분석 가능) */
   const [memo, setMemo] = useState("");
+  /** 빠른 태그 — /api/analyze body.tags 로 전달 */
+  const [selectedTags, setSelectedTags] = useState([]);
   const [loadingStep, setLoadingStep] = useState(0);
   const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
   const fileRef = useRef(null);
   const timerRef = useRef(null);
 
   const isMulti = images.length >= 2;
-  const hasMemo = memo.trim().length > 0;
-  const canAnalyze = images.length > 0 || hasMemo;
+  const hasMemoText = memo.trim().length > 0;
+  const hasExtraInput = selectedTags.length > 0 || hasMemoText;
+  /** 무료 빠른 추정: 캡처 1~3장, 직접 작성란 비어 있어야 함 */
+  const canAnalyze =
+    images.length >= 1 &&
+    images.length <= MAX_IMAGES_FREE &&
+    !hasMemoText;
 
-  const loadingSteps = isMulti
-    ? ["말투 & 어조 패턴 분석", "이모티콘 사용 빈도 계산", "문장 길이 & 구조 파악", "프로필 분위기 스캔", "추가 정보 종합 분석", "MBTI 데이터와 대조"]
-    : hasMemo
-    ? ["말투 & 어조 패턴 분석", "추가 입력 정보 분석", "MBTI 데이터와 대조", "분석 결과 정리"]
-    : ["말투 & 어조 패턴 분석", "이모티콘 사용 빈도 계산", "문장 길이 & 구조 파악", "MBTI 데이터와 대조"];
-
-  const loadingMsgs = isMulti
-    ? ["업로드된 캡처 이미지 분석 중...", "카카오톡 말투 패턴 파악 중...", "프로필 분위기 & 상태 메시지 스캔 중...", "추가 정보 종합 중...", "MBTI 데이터와 대조 중...", "분석 완료! 결과를 정리하고 있어요..."]
-    : hasMemo
-    ? ["말투 패턴 분석 중...", "입력하신 정보 분석 중...", "MBTI 데이터와 대조 중...", "분석 완료! 결과를 정리하고 있어요..."]
-    : ["카카오톡 말투 패턴 분석 중...", "이모티콘 빈도 계산 중...", "MBTI 데이터와 대조 중...", "분석 완료! 결과를 정리하고 있어요..."];
+  const { steps: loadingSteps, messages: loadingMsgs, icons: loadingIcons } =
+    getLoadingSteps(isMulti, selectedTags.length > 0, images.length, ANALYSIS_MODE.FREE);
 
   const addImages = (files) => {
     const newImgs = Array.from(files)
       .filter((f) => f.type.startsWith("image/"))
-      .slice(0, 5 - images.length)
-      .map((f) => ({ url: URL.createObjectURL(f), name: f.name }));
+      .slice(0, MAX_IMAGES_FREE - images.length)
+      .map((f) => ({
+        file: f,
+        preview: URL.createObjectURL(f),
+        name: f.name,
+      }));
     setImages((prev) => [...prev, ...newImgs]);
   };
 
-  const removeImage = (idx) => setImages((prev) => prev.filter((_, i) => i !== idx));
-
-  const toggleTag = (tag) => {
-    setMemo((prev) => {
-      const lines = prev.split("\n").filter(Boolean);
-      if (lines.includes(tag)) return lines.filter((l) => l !== tag).join("\n");
-      return [...lines, tag].join("\n");
+  const removeImage = (idx) => {
+    setImages((prev) => {
+      const removed = prev[idx];
+      if (removed?.preview) URL.revokeObjectURL(removed.preview);
+      return prev.filter((_, i) => i !== idx);
     });
   };
 
-  const startAnalysis = () => {
+  const toggleTag = (tag) => {
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
+    );
+  };
+
+  const runAnalysis = useCallback(async () => {
     if (!canAnalyze) return;
+    if (hasMemoText) {
+      setError(
+        "무료 빠른 추정은 직접 작성란을 비운 뒤 진행해 주세요. (빠른 태그는 반영됩니다)",
+      );
+      return;
+    }
+    setError(null);
     setStage("loading");
     setLoadingStep(0);
-    let i = 0;
+
+    const { messages } = getLoadingSteps(
+      isMulti,
+      selectedTags.length > 0,
+      images.length,
+      ANALYSIS_MODE.FREE,
+    );
+
+    let step = 0;
     timerRef.current = setInterval(() => {
-      i++;
-      if (i < loadingMsgs.length) {
-        setLoadingStep(i);
-      } else {
+      step++;
+      if (step < messages.length) setLoadingStep(step);
+    }, 700);
+
+    try {
+      const deviceId = await getDeviceId();
+      const total = images.length;
+      const base64Images = await Promise.all(
+        images.map(async (img) => {
+          const converted = await fileToBase64(img.file, total, undefined, {
+            tier: "free",
+          });
+          return {
+            base64Data: converted.base64Data,
+            mimeType: converted.mimeType,
+          };
+        }),
+      );
+
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          deviceId,
+          targetName: targetName.trim() || "미지정",
+          memo: "",
+          images: base64Images,
+          mode: ANALYSIS_MODE.FREE,
+          tags: selectedTags,
+        }),
+      });
+
+      const json = await res.json();
+
+      if (timerRef.current) {
         clearInterval(timerRef.current);
-        setResult(MBTI_DATA[Math.floor(Math.random() * MBTI_DATA.length)]);
-        setStage("result");
+        timerRef.current = null;
       }
-    }, 900);
+
+      if (!json.success) {
+        throw new Error(json.message || "분석에 실패했습니다");
+      }
+
+      const mapped = mapApiToCardResult(json.data);
+      setLoadingStep(messages.length);
+      setTimeout(() => {
+        setResult(mapped);
+        setStage("result");
+      }, 220);
+    } catch (e) {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      setError(e.message || "분석 중 오류가 발생했습니다");
+      setStage("main");
+    }
+  }, [
+    canAnalyze,
+    hasMemoText,
+    images,
+    isMulti,
+    selectedTags,
+    targetName,
+  ]);
+
+  const startAnalysis = () => {
+    void runAnalysis();
   };
 
   const handleReset = () => {
-    clearInterval(timerRef.current);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
     setStage("main");
     setLoadingStep(0);
     setResult(null);
+    setError(null);
+    images.forEach((img) => {
+      if (img?.preview) URL.revokeObjectURL(img.preview);
+    });
     setImages([]);
     setTargetName("");
     setMemo("");
+    setSelectedTags([]);
   };
 
   return (
@@ -166,7 +298,7 @@ export default function App() {
               <h1 className="text-2xl font-extrabold text-gray-900 leading-tight mb-2">말투로 MBTI를<br />읽어드릴게요</h1>
               <p className="text-gray-500 text-sm leading-relaxed">
                 카톡 대화 캡처를 올려주세요<br />
-                <span className="text-gray-400 text-xs">프로필 캡처는 선택사항이지만, 함께 올리면 더 정확한 분석이 가능해요</span>
+                <span className="text-gray-400 text-xs">무료 빠른 추정은 캡처 1~3장 · 빠른 태그만 서버에 전달돼요</span>
               </p>
             </div>
 
@@ -177,12 +309,35 @@ export default function App() {
               ))}
             </div>
 
+            {error && (
+              <div
+                className="rounded-2xl p-4 mb-4 border border-red-200 bg-red-50 anim-su"
+                role="alert"
+              >
+                <p className="text-sm font-bold text-red-800 mb-2">{error}</p>
+                <button
+                  type="button"
+                  onClick={() => setError(null)}
+                  className="text-xs text-red-600 underline mr-3"
+                >
+                  닫기
+                </button>
+                <button
+                  type="button"
+                  onClick={startAnalysis}
+                  className="text-xs font-bold text-red-800 bg-white px-3 py-1.5 rounded-lg border border-red-200"
+                >
+                  다시 시도
+                </button>
+              </div>
+            )}
+
             {/* ── Upload Card ── */}
             <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 mb-4 anim-su d2">
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <h2 className="font-extrabold text-gray-900 text-sm">캡처 업로드</h2>
-                  <p className="text-xs text-gray-400 mt-0.5">최대 5장까지 한번에 올릴 수 있어요</p>
+                  <p className="text-xs text-gray-400 mt-0.5">무료 빠른 추정: 최대 {MAX_IMAGES_FREE}장</p>
                 </div>
                 {images.length > 0 && (
                   <span className="text-xs font-bold px-2.5 py-1 rounded-full text-gray-900"
@@ -211,8 +366,8 @@ export default function App() {
                       border: targetName.trim() ? "1.5px solid #FEE500" : "1.5px solid #F3F4F6",
                       outline: "none",
                     }}
-                    onFocus={(e) => e.target.style.border = "1.5px solid #FEE500"}
-                    onBlur={(e) => e.target.style.border = targetName.trim() ? "1.5px solid #FEE500" : "1.5px solid #F3F4F6"}
+                    onFocus={(e) => (e.target.style.border = "1.5px solid #FEE500")}
+                    onBlur={(e) => (e.target.style.border = targetName.trim() ? "1.5px solid #FEE500" : "1.5px solid #F3F4F6")}
                   />
                   {targetName.trim() && (
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-green-400 flex items-center justify-center text-white text-xs font-bold">✓</div>
@@ -230,7 +385,7 @@ export default function App() {
                 onDrop={(e) => { e.preventDefault(); setIsDragging(false); addImages(e.dataTransfer.files); }}
                 onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                 onDragLeave={() => setIsDragging(false)}
-                onClick={() => images.length < 5 && fileRef.current?.click()}
+                onClick={() => images.length < MAX_IMAGES_FREE && fileRef.current?.click()}
                 className="rounded-2xl border-2 border-dashed transition-all duration-200 cursor-pointer mb-3"
                 style={{
                   borderColor: isDragging ? "#FEE500" : images.length > 0 ? "#D1D5DB" : "#E5E7EB",
@@ -254,20 +409,20 @@ export default function App() {
                   <div className="p-3">
                     <div className="grid grid-cols-3 gap-2 mb-2">
                       {images.map((img, i) => (
-                        <div key={i} className="relative rounded-xl overflow-hidden anim-pop" style={{ aspectRatio: "1" }}>
-                          <img src={img.url} alt={`캡처 ${i + 1}`} className="w-full h-full object-cover" />
+                        <div key={img.preview} className="relative rounded-xl overflow-hidden anim-pop" style={{ aspectRatio: "1" }}>
+                          <img src={img.preview} alt={`캡처 ${i + 1}`} className="w-full h-full object-cover" />
                           <div className="absolute top-1 left-1">
                             <span className="font-bold text-white rounded-md px-1.5 py-0.5 shadow"
                               style={{ background: i === 0 ? "rgba(0,0,0,0.55)" : "rgba(90,70,180,0.75)", fontSize: 9 }}>
                               {i === 0 ? "💬 대화" : "👤 프로필"}
                             </span>
                           </div>
-                          <button onClick={(e) => { e.stopPropagation(); removeImage(i); }}
+                          <button type="button" onClick={(e) => { e.stopPropagation(); removeImage(i); }}
                             className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black bg-opacity-60 flex items-center justify-center text-white"
                             style={{ fontSize: 10 }}>✕</button>
                         </div>
                       ))}
-                      {images.length < 5 && (
+                      {images.length < MAX_IMAGES_FREE && (
                         <div className="rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-1 text-gray-300"
                           style={{ aspectRatio: "1" }}>
                           <span className="text-xl font-light">+</span>
@@ -317,9 +472,9 @@ export default function App() {
                     ✏️ 추가 정보 입력
                     <span className="text-xs font-normal text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">선택사항</span>
                   </h2>
-                  <p className="text-xs text-gray-400 mt-0.5">입력할수록 분석 정확도가 높아져요</p>
+                  <p className="text-xs text-gray-400 mt-0.5">빠른 태그는 무료 분석에 반영돼요 · 긴 글은 메인 앱 프리미엄에서 이용해 주세요</p>
                 </div>
-                {hasMemo && (
+                {hasExtraInput && (
                   <span className="text-xs font-bold px-2.5 py-1 rounded-full text-green-700 bg-green-50">✓ 입력됨</span>
                 )}
               </div>
@@ -328,9 +483,9 @@ export default function App() {
               <p className="text-xs font-bold text-gray-500 mb-2">빠른 선택</p>
               <div className="flex flex-wrap gap-1.5 mb-4">
                 {QUICK_TAGS.map((tag) => {
-                  const active = memo.split("\n").includes(tag);
+                  const active = selectedTags.includes(tag);
                   return (
-                    <button key={tag} onClick={() => toggleTag(tag)}
+                    <button type="button" key={tag} onClick={() => toggleTag(tag)}
                       className="text-xs px-2.5 py-1.5 rounded-full border transition-all duration-150 active:scale-95"
                       style={{
                         background: active ? "#FEE500" : "white",
@@ -344,46 +499,46 @@ export default function App() {
                 })}
               </div>
 
-              {/* Free text */}
-              <p className="text-xs font-bold text-gray-500 mb-1.5">직접 작성</p>
+              {/* Free text — 무료 API 전송 안 함 */}
+              <p className="text-xs font-bold text-gray-500 mb-1.5">직접 작성 (무료 API 미포함)</p>
               <textarea
                 value={memo}
                 onChange={(e) => setMemo(e.target.value.slice(0, 300))}
-                placeholder="예) 평소에 말이 많고 리액션이 과한 편이에요. 감정 표현도 잘 하고 유머 감각이 있어요. 계획적이기보다 즉흥적으로 행동하는 것 같아요."
+                placeholder="무료 빠른 추정에서는 이 칸이 채워져 있으면 분석 버튼이 비활성화됩니다. 메인 앱의 프리미엄 탭에서 긴 관찰 메모를 넣을 수 있어요."
                 rows={4}
                 className="w-full text-sm text-gray-700 rounded-2xl p-3.5 resize-none"
                 style={{
                   background: "#F9FAFB",
-                  border: memo.trim() ? "1.5px solid #FEE500" : "1.5px solid #F3F4F6",
+                  border: memo.trim() ? "1.5px solid #F97316" : "1.5px solid #F3F4F6",
                   lineHeight: "1.65",
                   placeholderColor: "#D1D5DB",
                 }}
               />
               <div className="flex justify-between mt-1.5">
-                <p className="text-xs text-gray-300">태그 선택 또는 자유롭게 작성해주세요</p>
+                <p className="text-xs text-gray-400">작성 시 → 빠른 태그·캡처만으로 분석하려면 비워 주세요</p>
                 <p className="text-xs" style={{ color: memo.length > 260 ? "#EF4444" : "#9CA3AF" }}>{memo.length} / 300</p>
               </div>
             </div>
 
             {/* ── Final CTA ── */}
             <div className="anim-su d4">
-              {/* Info row showing what's been filled */}
               <div className="flex items-center gap-2 mb-3 px-1 flex-wrap">
                 <span className={`text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1 ${images.length > 0 ? "bg-green-50 text-green-600" : "bg-gray-100 text-gray-400"}`}>
                   {images.length > 0 ? "✓" : "○"} 캡처 {images.length > 0 ? `${images.length}장` : "없음"}
                 </span>
-                <span className={`text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1 ${hasMemo ? "bg-green-50 text-green-600" : "bg-gray-100 text-gray-400"}`}>
-                  {hasMemo ? "✓" : "○"} 추가 정보 {hasMemo ? "입력됨" : "없음"}
+                <span className={`text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1 ${hasExtraInput ? "bg-green-50 text-green-600" : "bg-gray-100 text-gray-400"}`}>
+                  {hasExtraInput ? "✓" : "○"} 추가 정보 {hasExtraInput ? "있음" : "없음"}
                 </span>
-                {(isMulti || hasMemo) && (
+                {(isMulti || selectedTags.length > 0) && (
                   <span className="text-xs px-2.5 py-1 rounded-full font-bold flex items-center gap-1"
                     style={{ background: "#FEE50033", color: "#856C00" }}>
-                    ✨ {isMulti && hasMemo ? "최고 정확도" : "높은 정확도"}
+                    ✨ 높은 정확도
                   </span>
                 )}
               </div>
 
               <button
+                type="button"
                 onClick={startAnalysis}
                 disabled={!canAnalyze}
                 className="w-full py-5 rounded-2xl font-extrabold text-base transition-all active:scale-95 flex items-center justify-center gap-2"
@@ -397,15 +552,20 @@ export default function App() {
                 }}>
                 <span style={{ fontSize: 20 }}>🔍</span>
                 <span>
-                  {isMulti && hasMemo ? "종합 MBTI 분석 요청"
-                    : isMulti ? `캡처 ${images.length}장으로 MBTI 분석 요청`
-                    : hasMemo && images.length === 0 ? "입력 정보로 MBTI 분석 요청"
-                    : "MBTI 분석 요청"}
+                  {!canAnalyze && images.length === 0
+                    ? "캡처 1장 이상 필요"
+                    : !canAnalyze && hasMemoText
+                      ? "직접 작성란을 비워 주세요"
+                      : isMulti && selectedTags.length > 0
+                        ? "종합 MBTI 분석 요청"
+                        : isMulti
+                          ? `캡처 ${images.length}장으로 MBTI 분석 요청`
+                          : "MBTI 분석 요청"}
                 </span>
               </button>
               {canAnalyze && (
                 <p className="text-xs text-center text-gray-400 mt-2">
-                  약 5~10초 내에 결과를 드릴게요
+                  서버 분석 완료까지 잠시만 기다려 주세요
                 </p>
               )}
             </div>
@@ -420,12 +580,12 @@ export default function App() {
               <div className="absolute inset-2 rounded-full anim-pr" style={{ background: "rgba(254,229,0,0.2)", animationDelay: "0.35s" }} />
               <div className="relative w-20 h-20 rounded-3xl flex items-center justify-center shadow-xl anim-float"
                 style={{ background: "#FEE500", fontSize: 36 }}>
-                {isMulti ? "🔮" : hasMemo ? "✏️" : "🧠"}
+                {isMulti ? "🔮" : selectedTags.length ? "✏️" : "🧠"}
               </div>
             </div>
 
             <h2 className="text-xl font-extrabold text-gray-900 mb-1">AI가 분석 중이에요</h2>
-            <p className="text-gray-500 text-sm mb-3 min-h-5">{loadingMsgs[loadingStep]}</p>
+            <p className="text-gray-500 text-sm mb-3 min-h-5">{loadingMsgs[loadingStep] ?? loadingMsgs[0]}</p>
 
             {isMulti && (
               <span className="text-xs font-bold px-3 py-1 rounded-full mb-4" style={{ background: "#FEE50033", color: "#856C00" }}>
@@ -433,7 +593,6 @@ export default function App() {
               </span>
             )}
 
-            {/* Progress dots */}
             <div className="flex gap-2 mb-8">
               {loadingMsgs.map((_, i) => (
                 <div key={i} className="rounded-full transition-all duration-300"
@@ -441,13 +600,12 @@ export default function App() {
               ))}
             </div>
 
-            {/* Steps list */}
             <div className="w-full space-y-2.5">
               {loadingSteps.map((label, i) => (
                 <div key={label} className="bg-white rounded-2xl p-3.5 flex items-center gap-3 shadow-sm border border-gray-100">
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
                     style={{ background: i < loadingStep ? "#DCFCE7" : "#FFF9C4", fontSize: 18 }}>
-                    {i < loadingStep ? "✅" : ["💬","😄","📝","📸","✏️","🧠"][i] || "🧠"}
+                    {i < loadingStep ? "✅" : loadingIcons[i] ?? "🧠"}
                   </div>
                   <div className="flex-1 text-left">
                     <p className="text-sm font-semibold text-gray-700">{label}</p>
@@ -468,18 +626,19 @@ export default function App() {
         {/* ════════ RESULT SCREEN ════════ */}
         {stage === "result" && result && (
           <div className="pt-6">
-            {(isMulti || hasMemo) && (
+            {(isMulti || selectedTags.length > 0) && (
               <div className="text-center mb-4 anim-su">
                 <span className="text-xs font-bold px-4 py-1.5 rounded-full shadow-sm"
                   style={{ background: "linear-gradient(90deg,#FEE500cc,#A29BFE55)", color: "#333" }}>
-                  {isMulti && hasMemo ? "✨ 대화 + 프로필 + 추가정보 종합 분석"
-                    : isMulti ? "✨ 대화 + 프로필 종합 분석 결과"
-                    : "✨ 추가 정보 반영 분석 결과"}
+                  {isMulti && selectedTags.length > 0
+                    ? "✨ 대화 + 프로필 + 빠른 태그 반영"
+                    : isMulti
+                      ? "✨ 대화 + 프로필 종합 분석 결과"
+                      : "✨ 빠른 태그 반영 분석 결과"}
                 </span>
               </div>
             )}
 
-            {/* MBTI Card */}
             <div className="rounded-3xl overflow-hidden shadow-xl mb-4 anim-su d1"
               style={{ background: `linear-gradient(135deg,${result.color}22,${result.color}44)`, border: `2px solid ${result.color}44` }}>
               <div className="p-6 text-center">
@@ -499,7 +658,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Summary row — multi only */}
             {isMulti && (
               <div className="grid grid-cols-2 gap-3 mb-4 anim-su d2">
                 <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
@@ -514,18 +672,16 @@ export default function App() {
               </div>
             )}
 
-            {/* User-entered info */}
-            {hasMemo && (
+            {selectedTags.length > 0 && (
               <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 mb-4 anim-su d2">
                 <h3 className="font-extrabold text-gray-900 mb-3 flex items-center gap-2">
                   <span className="w-7 h-7 rounded-xl flex items-center justify-center text-sm" style={{ background: "#FEE500" }}>✏️</span>
-                  입력하신 정보
+                  선택하신 빠른 태그
                 </h3>
-                <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 rounded-2xl p-3 whitespace-pre-line">{memo}</p>
+                <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 rounded-2xl p-3 whitespace-pre-line">{selectedTags.join("\n")}</p>
               </div>
             )}
 
-            {/* Chat traits */}
             <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 mb-4 anim-su d3">
               <h3 className="font-extrabold text-gray-900 mb-4 flex items-center gap-2">
                 <span className="w-7 h-7 rounded-xl flex items-center justify-center text-sm" style={{ background: "#FEE500" }}>💬</span>
@@ -533,7 +689,7 @@ export default function App() {
               </h3>
               <div className="space-y-2.5">
                 {result.traits.map((trait, i) => (
-                  <div key={trait} className="flex items-center gap-3 p-3 rounded-2xl anim-su"
+                  <div key={`${trait}-${i}`} className="flex items-center gap-3 p-3 rounded-2xl anim-su"
                     style={{ background: "#F9FAFB", animationDelay: `${0.3 + i * 0.08}s`, opacity: 0 }}>
                     <div className="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
                       style={{ background: result.color, color: "white" }}>{i + 1}</div>
@@ -543,7 +699,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Profile analysis — multi only */}
             {isMulti && (
               <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 mb-4 anim-su d4">
                 <h3 className="font-extrabold text-gray-900 mb-4 flex items-center gap-2">
@@ -576,20 +731,19 @@ export default function App() {
               </div>
             )}
 
-            {/* Disclaimer */}
             <div className="rounded-2xl p-4 mb-5 anim-su d5"
               style={{ background: "linear-gradient(135deg,#FEE50022,#FEE50044)", border: "1px solid #FEE50066" }}>
               <p className="text-xs font-bold text-yellow-700 mb-1">⚠️ 주의사항</p>
               <p className="text-xs text-yellow-600 leading-relaxed">이 분석은 재미를 위한 것으로, 실제 MBTI와 다를 수 있어요. 사람의 성격은 하나의 도구로 단정지을 수 없답니다 😊</p>
             </div>
 
-            {/* Action buttons */}
             <div className="flex gap-3 anim-su d6">
-              <button onClick={handleReset}
+              <button type="button" onClick={handleReset}
                 className="flex-1 py-4 rounded-2xl font-bold text-gray-700 bg-white border-2 border-gray-200 active:scale-95 transition-transform text-sm">
                 다시 분석하기
               </button>
               <button
+                type="button"
                 className="flex-1 py-4 rounded-2xl font-bold text-gray-900 active:scale-95 transition-transform text-sm shadow-lg"
                 style={{ background: "#FEE500" }}
                 onClick={() => alert(`${result.type} 결과 공유! (백엔드 연동 시 실제 공유 가능)`)}>
