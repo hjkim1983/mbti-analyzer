@@ -10,6 +10,22 @@ import {
   axisStrengthFromConfidence,
   confidenceLevelToKorean,
 } from "@/lib/result-confidence";
+import {
+  resolveCandidateRows,
+  legacyIndicatorsToAxisAnalysis,
+  mergeAxisAnalysis,
+  shouldUseEvidenceLayout,
+  flattenLimitationLines,
+  normalizeMbtiCode,
+} from "@/lib/result-evidence-helpers";
+
+const AXIS_ORDER = ["EI", "SN", "TF", "JP"];
+const AXIS_LABELS = {
+  EI: ["E 외향", "I 내향"],
+  SN: ["S 감각", "N 직관"],
+  TF: ["T 사고", "F 감정"],
+  JP: ["J 판단", "P 인식"],
+};
 
 export default function ResultScreen({
   result,
@@ -53,7 +69,55 @@ export default function ResultScreen({
     practicalTips,
     alternativeTypes,
     quotedInsights = [],
+    observedFeatures: rawObservedFeatures,
+    axisAnalysis: rawAxisAnalysis,
+    candidateTypes,
+    boundaryNote,
+    communicationTips: rawCommunicationTips,
+    profileImageNote,
   } = result;
+
+  const observedList =
+    Array.isArray(rawObservedFeatures) && rawObservedFeatures.length > 0
+      ? rawObservedFeatures.map((x) => String(x))
+      : Array.isArray(traits) && traits.length > 0
+        ? traits.map((x) => String(x))
+        : [];
+
+  const axisForCards = mergeAxisAnalysis(
+    rawAxisAnalysis,
+    legacyIndicatorsToAxisAnalysis(indicators),
+  );
+
+  const candidateRows = resolveCandidateRows(
+    candidateTypes,
+    mbtiRankings,
+    mbtiType,
+  );
+
+  const useEvidenceLayout = shouldUseEvidenceLayout(
+    observedList,
+    axisForCards,
+    candidateRows,
+  );
+
+  const communicationTipLines = (() => {
+    if (Array.isArray(rawCommunicationTips) && rawCommunicationTips.length > 0) {
+      return rawCommunicationTips.map((x) => String(x));
+    }
+    if (Array.isArray(practicalTips)) {
+      return practicalTips.map((x) => String(x));
+    }
+    return [];
+  })();
+
+  const limitationLinesAll = flattenLimitationLines(
+    analysisLimitations,
+    cautionAndMisread,
+  );
+
+  const showLimitationsInEvidence =
+    useEvidenceLayout && limitationLinesAll.length > 0;
 
   const displayConf =
     confidenceDisplay != null ? confidenceDisplay : confidence;
@@ -121,8 +185,10 @@ export default function ResultScreen({
         </div>
       )}
 
-      {/* Premium: 핵심 근거 요약 — 최상단 3초 훅 */}
-      {isPremium && premiumHookEvidence.length > 0 && (
+      {/* Premium: 핵심 근거 요약 — 관찰 특징이 없을 때만(중복 방지) */}
+      {!useEvidenceLayout &&
+        isPremium &&
+        premiumHookEvidence.length > 0 && (
         <GlassCard animate className="mb-4 border-2 border-amber-200/80 bg-amber-50/30">
           <p className="text-[11px] font-extrabold text-amber-900 mb-2 uppercase tracking-wide">
             📌 대화에서 잡힌 핵심 근거
@@ -147,8 +213,10 @@ export default function ResultScreen({
         </GlassCard>
       )}
 
-      {/* Premium: 한 줄 결론 */}
-      {isPremium && (oneLineConclusion?.trim() || title) && (
+      {/* Premium: 한 줄 결론 — 레거시 상단용 */}
+      {!useEvidenceLayout &&
+        isPremium &&
+        (oneLineConclusion?.trim() || title) && (
         <div className="rounded-2xl p-4 mb-4 text-center border border-white/60 bg-white/35 anim-slide-up">
           <p className="text-[10px] font-bold text-gray-500 mb-1">한 줄 결론</p>
           <p className="text-base font-extrabold text-gray-900 leading-snug">
@@ -157,7 +225,327 @@ export default function ResultScreen({
         </div>
       )}
 
-      {/* MBTI 메인 카드 */}
+      {/* ——— 4단계: 근거 우선 본문 ——— */}
+      {useEvidenceLayout && (
+        <div className="space-y-4 mb-5 anim-slide-up">
+          {isPremium &&
+            observedList.length === 0 &&
+            premiumHookEvidence.length > 0 && (
+            <GlassCard animate className="border-2 border-amber-200/80 bg-amber-50/30">
+              <p className="text-[11px] font-extrabold text-amber-900 mb-2 uppercase tracking-wide">
+                📌 대화에서 잡힌 핵심 근거
+              </p>
+              <ul className="space-y-2.5">
+                {premiumHookEvidence.slice(0, 3).map((item, i) => (
+                  <li key={i} className="text-sm text-gray-800 leading-snug">
+                    <span className="font-bold text-violet-800">
+                      {item.snippet
+                        ? `「${item.snippet.replace(/^「|」$/g, "")}」`
+                        : "—"}
+                    </span>
+                    {item.insight ? (
+                      <span className="block text-xs text-gray-600 mt-1 pl-0.5 border-l-2 border-violet-200">
+                        → {item.insight}
+                      </span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </GlassCard>
+          )}
+
+          {/* 1. 관찰된 특징 */}
+          {observedList.length > 0 && (
+            <GlassCard animate className="border border-violet-100/80 bg-white/40">
+              <h3 className="font-extrabold text-gray-900 mb-3 flex items-center gap-2 text-sm">
+                <span className="text-lg">💬</span>
+                대화에서 발견된 특징
+              </h3>
+              <ul className="space-y-2.5">
+                {observedList.map((line, i) => (
+                  <li
+                    key={i}
+                    className="text-sm text-gray-800 leading-relaxed flex gap-2 items-start"
+                  >
+                    <span className="text-violet-500 font-bold shrink-0">💬</span>
+                    <span>{line}</span>
+                  </li>
+                ))}
+              </ul>
+            </GlassCard>
+          )}
+
+          {/* 2. 축별 근거 카드 */}
+          {axisForCards &&
+            AXIS_ORDER.some((k) => axisForCards[k]) && (
+            <div className="space-y-3">
+              <p className="text-[11px] font-bold text-gray-500 px-1">
+                네 가지 성향 축 — 찬성·반대 근거
+              </p>
+              {AXIS_ORDER.map((key) => {
+                const ax = axisForCards[key];
+                if (!ax) return null;
+                const [leftL, rightL] = AXIS_LABELS[key] || [key[0], key[1]];
+                const win = String(ax.result ?? key[0])
+                  .trim()
+                  .toUpperCase()
+                  .slice(0, 1);
+                const leftWins = win === key[0];
+                const conf = Math.min(
+                  100,
+                  Math.max(0, Number(ax.confidence) || 0),
+                );
+                const ambiguous = conf < 65;
+                const forList = Array.isArray(ax.forEvidence)
+                  ? ax.forEvidence
+                  : [];
+                const againstList = Array.isArray(ax.againstEvidence)
+                  ? ax.againstEvidence
+                  : [];
+
+                return (
+                  <GlassCard
+                    key={key}
+                    animate
+                    className="!p-4 border border-white/50 bg-white/35"
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                      <p className="text-sm font-extrabold text-gray-900">
+                        <span
+                          style={{ color: leftWins ? color : "#9CA3AF" }}
+                        >
+                          {leftL}
+                        </span>
+                        <span className="text-gray-400 font-normal mx-1.5">
+                          /
+                        </span>
+                        <span
+                          style={{ color: !leftWins ? color : "#9CA3AF" }}
+                        >
+                          {rightL}
+                        </span>
+                      </p>
+                      {ambiguous && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">
+                          판단 애매
+                        </span>
+                      )}
+                    </div>
+                    <div className="h-2 bg-gray-100/80 rounded-full overflow-hidden mb-3">
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{
+                          width: `${conf}%`,
+                          background: `linear-gradient(90deg,${color}88,${color})`,
+                        }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-gray-500 mb-2">
+                      이 축 판단 강도 약 {conf}%
+                    </p>
+                    {forList.length > 0 && (
+                      <div className="mb-2">
+                        <p className="text-[10px] font-bold text-emerald-800 mb-1">
+                          찬성 근거
+                        </p>
+                        <ul className="space-y-1">
+                          {forList.map((t, i) => (
+                            <li
+                              key={i}
+                              className="text-xs text-gray-700 pl-1 border-l-2 border-emerald-200"
+                            >
+                              ✅ {String(t)}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {againstList.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-bold text-amber-900 mb-1">
+                          반대·예외 근거
+                        </p>
+                        <ul className="space-y-1">
+                          {againstList.map((t, i) => (
+                            <li
+                              key={i}
+                              className="text-xs text-gray-600 pl-1 border-l-2 border-amber-200"
+                            >
+                              ⚠️ {String(t)}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </GlassCard>
+                );
+              })}
+            </div>
+          )}
+
+          {/* 3. 후보 3개 */}
+          {candidateRows.length > 0 && (
+            <div>
+              <h3 className="font-extrabold text-gray-900 mb-3 text-sm flex items-center gap-2">
+                <span>🔀</span> 유력 MBTI 후보
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {candidateRows.map((row, idx) => {
+                  const meta = getMbtiMeta(row.type);
+                  const isFirst = row.rank === 1 || idx === 0;
+                  return (
+                    <GlassCard
+                      key={`${row.type}-${row.rank}`}
+                      animate
+                      className={`!p-3 flex flex-col items-center text-center transition-transform ${
+                        isFirst
+                          ? "ring-2 ring-offset-2 ring-violet-400 scale-[1.02] bg-violet-50/40"
+                          : "opacity-95 scale-95"
+                      }`}
+                    >
+                      <span className="text-[10px] font-bold text-gray-500 mb-1">
+                        {row.rank}순위
+                      </span>
+                      <span className="text-2xl mb-1">{meta?.emoji}</span>
+                      <p
+                        className={`font-black tracking-widest ${
+                          isFirst ? "text-xl" : "text-lg"
+                        } text-gray-900`}
+                      >
+                        {row.type}
+                      </p>
+                      <p className="text-[10px] text-gray-500 mt-1 line-clamp-3">
+                        {row.reason || "—"}
+                      </p>
+                    </GlassCard>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {isPremium && (oneLineConclusion?.trim() || title) && (
+            <div className="rounded-xl p-3 text-center bg-white/30 border border-white/50">
+              <p className="text-[10px] font-bold text-gray-500 mb-0.5">
+                한 줄 결론
+              </p>
+              <p className="text-sm font-extrabold text-gray-900">
+                {oneLineConclusion?.trim() || `${mbtiType} / ${title}`}
+              </p>
+            </div>
+          )}
+
+          {/* 4. 왜 헷갈리는지 */}
+          {boundaryNote?.trim() && (
+            <div
+              className="rounded-2xl p-4 border border-sky-100 bg-sky-50/50 text-sm text-sky-950 leading-relaxed"
+            >
+              <p className="font-extrabold text-sky-900 mb-1 flex items-center gap-2">
+                <span>💡</span> 왜 헷갈릴 수 있나요
+              </p>
+              {boundaryNote}
+            </div>
+          )}
+
+          {/* 5. 소통 팁 */}
+          {communicationTipLines.length > 0 && (
+            <GlassCard animate className="!p-4 border border-emerald-100/80 bg-emerald-50/20">
+              <h3 className="font-extrabold text-gray-900 mb-2 text-sm flex items-center gap-2">
+                <span>🤝</span>
+                이 사람과 소통하는 팁
+              </h3>
+              <ol className="list-decimal list-inside space-y-2 text-sm text-gray-800">
+                {communicationTipLines.map((t, i) => (
+                  <li key={i} className="leading-relaxed">
+                    {t}
+                  </li>
+                ))}
+              </ol>
+            </GlassCard>
+          )}
+
+          {/* 6. 분석 한계 */}
+          {showLimitationsInEvidence && (
+            <div className="rounded-2xl p-4 bg-gray-100/80 border border-gray-200/80">
+              <p className="text-[11px] font-bold text-gray-600 mb-2">
+                분석 한계
+              </p>
+              <p className="text-[11px] text-gray-500 mb-3 leading-relaxed">
+                이 분석은 제한된 데이터를 기반으로 한 추정이에요. 아래 내용을
+                함께 참고해 주세요.
+              </p>
+              <ul className="space-y-1.5">
+                {limitationLinesAll.map((line, i) => (
+                  <li key={i} className="text-xs text-gray-600 leading-relaxed">
+                    · {line}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* 7. 프로필 인상 */}
+          {profileImageNote?.trim() && (
+            <p className="text-[11px] text-gray-500 text-center px-2 leading-relaxed">
+              <span className="font-bold text-gray-600">📸 참고: 프로필 사진 인상</span>
+              <br />
+              {profileImageNote}
+            </p>
+          )}
+
+          {/* 8. 축소 MBTI 카드 */}
+          <div
+            className="rounded-2xl overflow-hidden shadow-md max-w-xs mx-auto border anim-slide-up"
+            style={{
+              background: `linear-gradient(135deg,${color}18,${color}33)`,
+              borderColor: `${color}44`,
+            }}
+          >
+            <div className="p-4 text-center">
+              {targetName?.trim() && (
+                <p className="text-[10px] font-bold text-gray-400 mb-1 uppercase tracking-wide">
+                  {targetName}
+                </p>
+              )}
+              <div className="text-3xl mb-1">{emoji}</div>
+              <div
+                className="text-3xl font-black tracking-widest mb-0.5"
+                style={{ color }}
+              >
+                {normalizeMbtiCode(mbtiType) || mbtiType}
+              </div>
+              <p className="text-xs text-gray-600 font-semibold mb-1">{title}</p>
+              <p className="text-[10px] text-gray-500">
+                확신도 {displayConf}% · {levelKo}
+              </p>
+              {tags && tags.length > 0 && (
+                <div className="flex justify-center gap-1 flex-wrap mt-2">
+                  {tags.slice(0, 6).map((tag) => (
+                    <span
+                      key={tag}
+                      className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white"
+                      style={{ background: color }}
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <p className="text-center text-xs text-gray-500 mt-2 mb-1">
+            가장 유력한 후보입니다
+          </p>
+          {isPremium && confidenceReason?.trim() && (
+            <p className="text-[11px] text-gray-600 text-center px-2 leading-relaxed">
+              왜 이 정도로 봤나요? {confidenceReason}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* MBTI 메인 카드 — 레거시 상단 강조 */}
+      {!useEvidenceLayout && (
       <div
         className="rounded-3xl overflow-hidden shadow-xl mb-4 anim-slide-up delay-1"
         style={{
@@ -212,9 +600,10 @@ export default function ResultScreen({
           </div>
         </div>
       </div>
+      )}
 
       {/* Free: 가까운 후보 1개만 (개인화 깊이는 Premium에서) */}
-      {!isPremium && rank2 && (
+      {!useEvidenceLayout && !isPremium && rank2 && (
         <div className="mb-4 anim-slide-up delay-1">
           <p className="text-[11px] font-bold text-gray-600 mb-2 px-1">
             빠른 추정 — 1순위와 비슷했던 다른 유형
@@ -304,8 +693,8 @@ export default function ResultScreen({
         </GlassCard>
       )}
 
-      {/* 지표별 분석 — 프리미엄: 근거+해석+축 강도 */}
-      {indicators && (
+      {/* 지표별 분석 — 근거 레이아웃에서는 축 카드로 대체 */}
+      {indicators && !useEvidenceLayout && (
         <GlassCard animate delay={2} className="mb-4">
           <h3 className="font-extrabold text-gray-900 mb-1 flex items-center gap-2">
             <span
@@ -412,8 +801,9 @@ export default function ResultScreen({
         </GlassCard>
       )}
 
-      {/* 프리미엄: 1·2·3순위 비교 — 지표 직후 */}
+      {/* 프리미엄: 1·2·3순위 비교 — 후보 카드가 있으면 중복 생략 */}
       {isPremium &&
+        !useEvidenceLayout &&
         alternativeTypes &&
         (alternativeTypes.whyFirst?.trim() ||
           alternativeTypes.first?.mbtiType ||
@@ -706,8 +1096,9 @@ export default function ResultScreen({
         </GlassCard>
       )}
 
-      {/* 대화 + 프로필 요약 (종합 모드 또는 프리미엄 전체 패턴) */}
+      {/* 대화 + 프로필 요약 — 관찰 특징 블록이 있으면 생략 */}
       {(isPremium || isMulti) &&
+        !useEvidenceLayout &&
         highlights &&
         Object.keys(highlights).length > 0 && (
         <div className="grid grid-cols-2 gap-3 mb-4 anim-slide-up delay-2">
@@ -760,8 +1151,10 @@ export default function ResultScreen({
         </GlassCard>
       )}
 
-      {/* 주요 말투 특징 */}
-      {traits && traits.length > 0 && (
+      {/* 주요 말투 특징 — 관찰 목록과 겹치면 생략 */}
+      {traits &&
+        traits.length > 0 &&
+        !(useEvidenceLayout && observedList.length > 0) && (
         <GlassCard animate delay={3} className="mb-4">
           <h3 className="font-extrabold text-gray-900 mb-4 flex items-center gap-2">
             <span
@@ -871,10 +1264,13 @@ export default function ResultScreen({
         </GlassCard>
       )}
 
-      {/* 프리미엄: 오판 가능성 · 분석 한계 (신뢰 강화) */}
+      {/* 프리미엄: 오판 가능성 · 분석 한계 — 근거 블록에 한계를 넣었으면 생략 */}
       {isPremium &&
+        !showLimitationsInEvidence &&
         (cautionAndMisread?.points?.length > 0 ||
-          analysisLimitations?.points?.length > 0) && (
+          analysisLimitations?.points?.length > 0 ||
+          (typeof analysisLimitations === "string" &&
+            analysisLimitations.trim())) && (
         <GlassCard animate delay={4} className="mb-4 border border-amber-200/80">
           <h3 className="font-extrabold text-gray-900 mb-3 flex items-center gap-2">
             <span
