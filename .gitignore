@@ -25,3 +25,6 @@ Thumbs.db
 # IDE (선택)
 # .vscode/
 # .idea/
+
+# 로컬 가이드 (저장소 추적 제외)
+mbti-analyzer-refactor-guide.md
