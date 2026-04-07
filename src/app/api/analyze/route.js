@@ -15,6 +15,7 @@ import {
   requiresPayment,
 } from "@/lib/analysis-tier";
 import { selectImagesForApi } from "@/lib/analysis-images";
+import { normalizeGeminiAnalysisResult } from "@/lib/analysis-result-normalize";
 
 const RELATIONSHIP_ALLOWED = new Set([
   "friend",
@@ -186,6 +187,8 @@ export async function POST(request) {
         { status: 500 },
       );
     }
+
+    result = normalizeGeminiAnalysisResult(result, { mode });
 
     const analysisId = await saveAnalysis({
       profileId,

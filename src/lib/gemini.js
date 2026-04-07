@@ -38,42 +38,49 @@ function getCompactSkillPrompt() {
   return cachedCompactSkillPrompt;
 }
 
-/** Premium: 요약 스킬 문서 + 압축 규칙 (전체 mbti_skills.md 매번 주입하지 않음) */
+/** Premium: 요약 스킬 문서 + 근거 중심 추론 (가이드 3단계) */
 function buildPremiumSystemPrompt() {
   const skill = getCompactSkillPrompt();
-  return `당신은 카카오톡 캡처·관찰 텍스트를 통합해 MBTI를 추론하는 전문 에이전트입니다.
+  return `당신은 카카오톡 대화·이미지·관찰 메모를 바탕으로 MBTI를 추론하는 심리언어학 분석 전문가입니다.
 
 ## 판단 기준 (요약)
 ${skill}
 
-## 프리미엄 리포트 원칙
-1. **근거**: 각 축 evidence는 **짧은 인용 3개** (한 줄·25자 내외). 장황한 설명 금지.
-2. **해석**: indicators의 interpretation·관계/실전 필드는 **문단당 1~3문장**. 같은 말 반복 금지.
-3. **확신도**: confidence 보통 **52~85**. 90+ 는 근거가 매우 명확할 때만. confidenceReason 한 줄.
-4. **경계**: 애매한 축은 boundaryNote에 명시.
-5. **대안**: alternativeTypes의 first·second·third의 mbtiType은 **최종 mbtiType과 다른** 서로 다른 유형만(헷갈렸던 차선·제외 후보). 최종 결론 유형은 루트 mbtiType에만 넣고, 대안 칸에 동일 코드를 반복하지 말 것.
-6. **한계·팁**: analysisLimitations·practicalTips는 **실제로 쓸 만한 항목 수**만 (빈 수식어 금지).
+## 분석 순서 (반드시 이 순서를 따를 것)
+1. 대상 인물의 말풍선과 입력 데이터를 식별한다.
+2. 관찰 가능한 언어·행동 신호를 최소 5개 추출한다.
+3. 제공된 맥락(관계, 대화 분위기, 태그, 메모)을 판별하고 분석에 반영한다.
+4. E/I, S/N, T/F, J/P 각 축에 대해 찬성·반대 근거를 함께 기술한다.
+5. 가장 유력한 MBTI 후보를 3개(rank 1~3) 제시한다(단일 확정 문구는 쓰지 않는다).
+6. 애매한 축·오판 가능성·분석 한계를 명시한다.
+
+## 핵심 규칙
+- 한 가지 MBTI만 확정하지 말고 후보 2~3개를 제시한다.
+- 각 축마다 찬성 근거(forEvidence)와 반대 근거(againstEvidence)를 함께 적는다.
+- 프로필 이미지는 보조 신호로만 쓴다.
+- 관찰자 메모가 인상 평가 위주면 가중치를 낮춘다고 boundaryNote에 적는다.
+- 업무 맥락에서는 T/F·J/P 판단에 특히 유의한다.
 
 ## 출력
-JSON만. 한국어. 빈 필드는 null 또는 []. 개인정보는 가명·최소 인용.`;
+사용자 메시지에 적힌 JSON 스키마에만 맞춰 응답한다. JSON만. 한국어. 빈 값은 null 또는 []. 개인정보는 가명·최소 인용.`;
 }
 
-/** Free: 긴 스킬 문서 없음 — 짧은 규칙만 (입력 토큰·지연 최소화) */
+/** Free: 긴 스킬 문서 없음 — 근거·후보 중심 짧은 JSON (서버에서 레거시 필드 보강) */
 function buildFreeSystemPrompt() {
-  return `카카오톡 캡처로 MBTI **방향만** 빠르게 추정하는 에이전트입니다.
+  return `카카오톡 캡처로 MBTI 후보와 축별 근거를 빠르게 추정하는 심리언어학 분석 에이전트입니다.
 
-## 입력
-대화/프로필이 한 화면에 있으면 대화 톤·이모지·답장 패턴을 우선하세요.
+## 분석 순서
+1. 말풍선·프로필·맥락 식별 → 2. 관찰 신호 5개 이상 → 3. 맥락(관계·분위기·태그) 반영
+4. 4축 각각 찬성·반대 근거 → 5. 후보 MBTI 3개 → 6. 한계·오판 요인
 
-## 무료 빠른 추정
-- 캡처 **최대 3장** 기준. 오판 가능 — **1·2·3순위** 유형 제시.
-- **indicators·프리미엄 전용 필드 금지.**
-- **evidenceBullets** 2~3개: 「짧은 인용」+ 한 줄 해석.
-- summary·티저·lockedPreview로 프리미엄 유도.
-- confidence **52~78**, confidenceLevel MEDIUM|LOW 우선.
+## 규칙
+- 단일 유형 확정 금지. 후보 3개(candidateTypes rank 1~3).
+- 각 축에 forEvidence·againstEvidence를 함께 적는다.
+- indicators·프리미엄 전용 필드(관계 장문 등)는 넣지 않는다.
+- confidence는 축 근거를 반영해 **52~78** 정도, confidenceLevel은 MEDIUM|LOW 우선.
 
 ## 출력
-JSON만. 한국어.`;
+사용자 메시지의 JSON 스키마만 따른다. JSON만. 한국어.`;
 }
 
 /**
@@ -150,16 +157,43 @@ function buildPremiumUserParts({
   parts.push({ text: `\n## 가중치\n${weightGuide}` });
 
   parts.push({
-    text: `## 출력 (JSON만, application/json 응답)
-필수 키: tier "premium", mbtiType, confidence, confidenceLevel, confidenceReason, oneLineConclusion,
-keyEvidenceSummary[{snippet,axis,insight}],
-indicators(EI,SN,TF,JP: result,score,confidence,evidence[],interpretation,boundaryNote,strengthLabel),
-highlights, traits, tags, conflicts, profile|null, alternativeTypes(first,second,third,whyFirst),
-relationshipAndCommunication(summary, whenInterested, whenUncomfortable, whenClose, inConflict, replyAndEmoji, contactPreference, tips[]),
-practicalTips, workAndRoutine, cautionAndMisread, analysisLimitations, quotedInsights, emoji, title, color
+    text: `## 출력 (JSON만)
+아래 스키마를 정확히 따르세요. tier는 "premium".
+루트에 mbtiType(= candidateTypes rank1 type과 동일 4글자), confidence(숫자), confidenceLevel(HIGH|MEDIUM|LOW), confidenceReason(한 줄)을 반드시 포함하세요.
 
-alternativeTypes 규칙: first·second·third의 mbtiType은 **mbtiType(최종)과 다른** 코드만. 중복 금지.
-짧게: evidence는 인용 위주 한 줄. interpretation·관계 문단은 각 1~3문장. 빈 값 null/[]`,
+{
+  "tier": "premium",
+  "mbtiType": "XXXX",
+  "confidence": 60,
+  "confidenceLevel": "MEDIUM",
+  "confidenceReason": "한 줄",
+  "observedFeatures": ["관찰 문장 5개 이상"],
+  "axisAnalysis": {
+    "EI": { "result": "E|I", "confidence": 0-100, "forEvidence": ["…"], "againstEvidence": ["…"] },
+    "SN": { "result": "S|N", "confidence": 0-100, "forEvidence": [], "againstEvidence": [] },
+    "TF": { "result": "T|F", "confidence": 0-100, "forEvidence": [], "againstEvidence": [] },
+    "JP": { "result": "J|P", "confidence": 0-100, "forEvidence": [], "againstEvidence": [] }
+  },
+  "candidateTypes": [
+    { "type": "XXXX", "rank": 1, "reason": "한 줄" },
+    { "type": "YYYY", "rank": 2, "reason": "한 줄" },
+    { "type": "ZZZZ", "rank": 3, "reason": "한 줄" }
+  ],
+  "boundaryNote": "가장 애매한 축·맥락 요인",
+  "analysisLimitations": "문자열 한 덩어리(데이터 부족·단일 상대 등)",
+  "communicationTips": ["팁1", "팁2", "팁3"],
+  "profileImageNote": "프로필·배경 보조 신호(없으면 빈 문자열)",
+  "oneLineConclusion": "한 줄 결론",
+  "keyEvidenceSummary": [{ "snippet": "짧게", "axis": "EI", "insight": "해석" }],
+  "practicalTips": ["실전 팁"],
+  "workAndRoutine": { "summary": "", "tips": [] },
+  "relationshipAndCommunication": { "summary": "", "tips": [] },
+  "cautionAndMisread": { "points": [] },
+  "quotedInsights": [],
+  "tags": ["#태그"]
+}
+
+축 confidence는 해당 축 판단 강도(0~100). 후보 3개 type은 서로 다르게. 빈 값 null/[].`,
   });
 
   return parts;
@@ -197,31 +231,30 @@ function buildFreeUserParts({
   }
 
   parts.push({
-    text: `\n## 출력 형식 (반드시 이 키만 사용)
-JSON만 출력하세요.
-mbtiType은 1순위와 동일. mbtiRankings는 서로 다른 유형 3개(1·2·3순위).
-evidenceBullets: **캡처 근거 2~3개**, 각 항목은 {"snippet":"「짧은 인용」","insight":"한 줄 해석"} 형태 권장.
+    text: `\n## 출력 (JSON만)
+아래 키를 사용하세요. tier는 "free". 루트 mbtiType·confidence·confidenceLevel은 candidateTypes·axisAnalysis와 일치하게 쓰세요.
+
 {
   "tier": "free",
-  "mbtiType": "XXXX",
-  "mbtiRankings": [
-    { "rank": 1, "mbtiType": "XXXX", "hint": "1순위 한 줄" },
-    { "rank": 2, "mbtiType": "YYYY", "hint": "2순위 후보" },
-    { "rank": 3, "mbtiType": "ZZZZ", "hint": "3순위 후보" }
-  ],
+  "mbtiType": "1순위 4글자",
   "confidence": 52-78,
   "confidenceLevel": "MEDIUM|LOW",
-  "summary": { "headline": "한 줄 헤드라인", "oneLiner": "부연 한 문장" },
-  "evidenceBullets": [{"snippet":"「…」","insight":"…"},{"snippet":"「…」","insight":"…"}],
-  "teaserBullets": ["프리미엄에서 열리는 깊이 티저1", "티저2", "티저3"],
-  "lockedPreview": {
-    "labels": [
-      "4축마다 대화 근거 3개+ · 해석",
-      "1·2·3순위 유형 비교와 선택 이유",
-      "관계·갈등·연락 스타일 실전 해석",
-      "실전 소통 팁 · 오판 가능성 안내"
-    ]
+  "observedFeatures": ["관찰 가능한 신호 5개 이상"],
+  "axisAnalysis": {
+    "EI": { "result": "E|I", "confidence": 0-100, "forEvidence": ["…"], "againstEvidence": ["…"] },
+    "SN": { "result": "S|N", "confidence": 0-100, "forEvidence": [], "againstEvidence": [] },
+    "TF": { "result": "T|F", "confidence": 0-100, "forEvidence": [], "againstEvidence": [] },
+    "JP": { "result": "J|P", "confidence": 0-100, "forEvidence": [], "againstEvidence": [] }
   },
+  "candidateTypes": [
+    { "type": "XXXX", "rank": 1, "reason": "한 줄" },
+    { "type": "YYYY", "rank": 2, "reason": "한 줄" },
+    { "type": "ZZZZ", "rank": 3, "reason": "한 줄" }
+  ],
+  "boundaryNote": "애매한 축·맥락 요인",
+  "analysisLimitations": "분석 한계(한 문단)",
+  "communicationTips": ["팁1", "팁2", "팁3"],
+  "profileImageNote": "프로필 보조 신호 또는 빈 문자열",
   "tags": ["#태그1", "#태그2"]
 }`,
   });
