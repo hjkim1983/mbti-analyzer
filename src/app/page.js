@@ -1,13 +1,10 @@
-"use client";
-
-import HomeContent from "@/components/HomeContent";
+import HomeContentDynamic from "@/components/HomeContentDynamic";
 
 /**
- * next/dynamic(ssr:false) 분리 청크가 Webpack HMR/캐시와 맞물릴 때
- * `__webpack_modules__[moduleId] is not a function` 가 날 수 있어 정적 import 유지.
- * isMounted 스피너 게이트는 SSR HTML과 클라이언트 첫 페인트 불일치·확장 프로그램 DOM 수정 시
- * hydration 오류를 유발할 수 있어 제거함.
+ * 메인 UI는 HomeContentDynamic 안에서만 로드(ssr:false).
+ * 개발 중 HMR과 분리 청크가 꼬이면 `__webpack_modules__[moduleId] is not a function` 가
+ * 드물게 날 수 있음 — dev 서버 재시작을 시도.
  */
 export default function Page() {
-  return <HomeContent />;
+  return <HomeContentDynamic />;
 }
