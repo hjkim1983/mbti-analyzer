@@ -1,6 +1,10 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 import { ANALYSIS_MODE } from "./analysis-tier";
+import {
+  getRelationshipLabel,
+  getContextLabel,
+} from "@/constants/mbti-data";
 
 const MODEL = "gemini-2.5-flash";
 const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
@@ -72,12 +76,40 @@ function buildFreeSystemPrompt() {
 JSON만. 한국어.`;
 }
 
-function buildPremiumUserParts({ targetName, memo, images }) {
+/**
+ * 관계·대화 맥락 — 프롬프트에만 주입 (검증은 API 라우트에서 화이트리스트)
+ */
+function buildContextHint(relationship, chatContext) {
+  const rel = relationship ? getRelationshipLabel(relationship) : "";
+  const ctx = chatContext ? getContextLabel(chatContext) : "";
+  if (!rel && !ctx) return "";
+  if (rel && ctx) {
+    return `\n\n## 맥락\n이 대화는 **${rel}** 관계에서의 **${ctx}** 맥락으로 가정합니다. 업무 맥락에서는 평소 F도 T처럼 보일 수 있으니 맥락을 고려하세요.`;
+  }
+  if (rel) {
+    return `\n\n## 맥락\n관계: **${rel}**. 맥락에 따라 E/I·T/F 해석이 달라질 수 있습니다.`;
+  }
+  return `\n\n## 맥락\n대화 분위기: **${ctx}**. 업무 맥락에서는 평소 F도 T처럼 보일 수 있습니다.`;
+}
+
+function buildPremiumUserParts({
+  targetName,
+  memo,
+  images,
+  tags,
+  relationship,
+  chatContext,
+}) {
+  const tagList = Array.isArray(tags)
+    ? tags.map((t) => String(t).trim()).filter(Boolean)
+    : [];
+
   const parts = [];
   parts.push({
     text:
       `## 분석 대상: ${targetName || "미지정"}\n` +
-      `이미지에서 [A] 대화·[B] 프로필을 구분해 이 사람의 MBTI를 분석하세요.`,
+      `이미지에서 [A] 대화·[B] 프로필을 구분해 이 사람의 MBTI를 분석하세요.` +
+      buildContextHint(relationship, chatContext),
   });
 
   for (const img of images) {
@@ -86,6 +118,12 @@ function buildPremiumUserParts({ targetName, memo, images }) {
         mimeType: img.mimeType || "image/jpeg",
         data: img.base64Data,
       },
+    });
+  }
+
+  if (tagList.length > 0) {
+    parts.push({
+      text: `\n## 관찰자 행동 태그\n${tagList.join(" · ")}`,
     });
   }
 
@@ -127,7 +165,13 @@ alternativeTypes 규칙: first·second·third의 mbtiType은 **mbtiType(최종)�
   return parts;
 }
 
-function buildFreeUserParts({ targetName, images, tags }) {
+function buildFreeUserParts({
+  targetName,
+  images,
+  tags,
+  relationship,
+  chatContext,
+}) {
   const parts = [];
   const tagList = Array.isArray(tags)
     ? tags.map((t) => String(t).trim()).filter(Boolean)
@@ -137,8 +181,9 @@ function buildFreeUserParts({ targetName, images, tags }) {
       `## 분석 대상\n이름: ${targetName || "미지정"}\n\n` +
       `무료 빠른 추정: 캡처 이미지로 MBTI 방향과 짧은 요약만 제공합니다.\n\n` +
       `이미지에서 대화와 프로필을 구분해 참고하세요.` +
+      buildContextHint(relationship, chatContext) +
       (tagList.length > 0
-        ? `\n\n## 관찰자 빠른 태그 (참고만, 가중치 낮음)\n${tagList.join(" · ")}`
+        ? `\n\n## 관찰자 행동 태그 (참고)\n${tagList.join(" · ")}`
         : ""),
   });
 
@@ -301,7 +346,13 @@ async function postGemini(body) {
   }
 }
 
-async function callGeminiFree({ targetName, images, tags }) {
+async function callGeminiFree({
+  targetName,
+  images,
+  tags,
+  relationship,
+  chatContext,
+}) {
   const body = {
     system_instruction: {
       parts: [{ text: buildFreeSystemPrompt() }],
@@ -309,7 +360,13 @@ async function callGeminiFree({ targetName, images, tags }) {
     contents: [
       {
         role: "user",
-        parts: buildFreeUserParts({ targetName, images, tags }),
+        parts: buildFreeUserParts({
+          targetName,
+          images,
+          tags,
+          relationship,
+          chatContext,
+        }),
       },
     ],
     generationConfig: {
@@ -331,7 +388,14 @@ async function callGeminiFree({ targetName, images, tags }) {
   return postGemini(body);
 }
 
-async function callGeminiPremium({ targetName, memo, images }) {
+async function callGeminiPremium({
+  targetName,
+  memo,
+  images,
+  tags,
+  relationship,
+  chatContext,
+}) {
   const body = {
     system_instruction: {
       parts: [{ text: buildPremiumSystemPrompt() }],
@@ -339,7 +403,14 @@ async function callGeminiPremium({ targetName, memo, images }) {
     contents: [
       {
         role: "user",
-        parts: buildPremiumUserParts({ targetName, memo, images }),
+        parts: buildPremiumUserParts({
+          targetName,
+          memo,
+          images,
+          tags,
+          relationship,
+          chatContext,
+        }),
       },
     ],
     generationConfig: {
@@ -362,7 +433,7 @@ async function callGeminiPremium({ targetName, memo, images }) {
 }
 
 /**
- * @param {{ targetName?: string, memo?: string, images: Array, mode?: string, tags?: string[] }} opts
+ * @param {{ targetName?: string, memo?: string, images: Array, mode?: string, tags?: string[], relationship?: string|null, chatContext?: string|null }} opts
  */
 export async function callGemini({
   targetName,
@@ -370,17 +441,25 @@ export async function callGemini({
   images,
   mode = ANALYSIS_MODE.FREE,
   tags,
+  relationship,
+  chatContext,
 }) {
+  const tagArr = Array.isArray(tags) ? tags : [];
   if (mode === ANALYSIS_MODE.PREMIUM) {
     return callGeminiPremium({
       targetName,
       memo: (memo && String(memo).trim()) || "",
       images: images || [],
+      tags: tagArr,
+      relationship: relationship || null,
+      chatContext: chatContext || null,
     });
   }
   return callGeminiFree({
     targetName,
     images: images || [],
-    tags: Array.isArray(tags) ? tags : [],
+    tags: tagArr,
+    relationship: relationship || null,
+    chatContext: chatContext || null,
   });
 }

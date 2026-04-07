@@ -16,6 +16,31 @@ import {
 } from "@/lib/analysis-tier";
 import { selectImagesForApi } from "@/lib/analysis-images";
 
+const RELATIONSHIP_ALLOWED = new Set([
+  "friend",
+  "some",
+  "lover",
+  "coworker",
+  "family",
+  "other",
+]);
+const CHAT_CONTEXT_ALLOWED = new Set([
+  "daily",
+  "work",
+  "conflict",
+  "comfort",
+  "plan",
+  "casual",
+]);
+
+function sanitizeRelationship(v) {
+  return typeof v === "string" && RELATIONSHIP_ALLOWED.has(v) ? v : null;
+}
+
+function sanitizeChatContext(v) {
+  return typeof v === "string" && CHAT_CONTEXT_ALLOWED.has(v) ? v : null;
+}
+
 // Vercel Hobby: 최대 60초 — 심층(최대 10장) 처리 시간 확보
 export const maxDuration = 60;
 
@@ -30,6 +55,8 @@ export async function POST(request) {
       paymentId,
       mode: rawMode,
       tags: rawTags,
+      relationship: rawRelationship,
+      chatContext: rawChatContext,
     } = body;
 
     const mode = normalizeAnalysisMode(rawMode);
@@ -113,6 +140,9 @@ export async function POST(request) {
           .slice(0, 12)
       : [];
 
+    const relationship = sanitizeRelationship(rawRelationship);
+    const chatContext = sanitizeChatContext(rawChatContext);
+
     let result;
     try {
       result = await callGemini({
@@ -120,7 +150,9 @@ export async function POST(request) {
         memo: memoTrim,
         images: imagesForGemini,
         mode,
-        tags: mode === ANALYSIS_MODE.FREE ? contextTags : [],
+        tags: contextTags,
+        relationship,
+        chatContext,
       });
     } catch (err) {
       if (err.message === "ANALYSIS_TIMEOUT") {

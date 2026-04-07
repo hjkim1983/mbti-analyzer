@@ -5,21 +5,11 @@ import { getDeviceId } from "./src/lib/device-id.js";
 import { fileToBase64 } from "./src/lib/image-utils.js";
 import { ANALYSIS_MODE, MAX_IMAGES_FREE } from "./src/lib/analysis-tier.js";
 import { getLoadingSteps } from "./src/constants/loading-steps.js";
-
-const QUICK_TAGS = [
-  "말이 많아요",
-  "말이 적어요",
-  "리액션이 과해요",
-  "감정 표현 잘 함",
-  "논리적으로 말함",
-  "즉흥적인 편",
-  "계획적인 편",
-  "공감을 잘 해줘요",
-  "유머 감각 있음",
-  "진지한 편",
-  "답장이 빨라요",
-  "답장이 느려요",
-];
+import {
+  BEHAVIOR_TAGS,
+  RELATIONSHIP_OPTIONS,
+  CONTEXT_OPTIONS,
+} from "./src/constants/mbti-data.js";
 
 /**
  * /api/analyze 무료 응답 → 기존 결과 카드 UI 형태로 매핑
@@ -82,8 +72,10 @@ export default function App() {
   const [targetName, setTargetName] = useState("");
   /** 직접 작성란 — 무료 API 규칙상 전송하지 않음(비어 있어야 분석 가능) */
   const [memo, setMemo] = useState("");
-  /** 빠른 태그 — /api/analyze body.tags 로 전달 */
+  /** 행동 태그 — /api/analyze body.tags */
   const [selectedTags, setSelectedTags] = useState([]);
+  const [relationship, setRelationship] = useState(null);
+  const [chatContext, setChatContext] = useState(null);
   const [loadingStep, setLoadingStep] = useState(0);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -92,7 +84,11 @@ export default function App() {
 
   const isMulti = images.length >= 2;
   const hasMemoText = memo.trim().length > 0;
-  const hasExtraInput = selectedTags.length > 0 || hasMemoText;
+  const hasExtraInput =
+    selectedTags.length > 0 ||
+    hasMemoText ||
+    Boolean(relationship) ||
+    Boolean(chatContext);
   /** 무료 빠른 추정: 캡처 1~3장, 직접 작성란 비어 있어야 함 */
   const canAnalyze =
     images.length >= 1 &&
@@ -100,7 +96,12 @@ export default function App() {
     !hasMemoText;
 
   const { steps: loadingSteps, messages: loadingMsgs, icons: loadingIcons } =
-    getLoadingSteps(isMulti, selectedTags.length > 0, images.length, ANALYSIS_MODE.FREE);
+    getLoadingSteps(
+      isMulti,
+      selectedTags.length > 0 || Boolean(relationship) || Boolean(chatContext),
+      images.length,
+      ANALYSIS_MODE.FREE,
+    );
 
   const addImages = (files) => {
     const newImgs = Array.from(files)
@@ -142,7 +143,7 @@ export default function App() {
 
     const { messages } = getLoadingSteps(
       isMulti,
-      selectedTags.length > 0,
+      selectedTags.length > 0 || Boolean(relationship) || Boolean(chatContext),
       images.length,
       ANALYSIS_MODE.FREE,
     );
@@ -178,6 +179,8 @@ export default function App() {
           images: base64Images,
           mode: ANALYSIS_MODE.FREE,
           tags: selectedTags,
+          relationship: relationship || undefined,
+          chatContext: chatContext || undefined,
         }),
       });
 
@@ -213,6 +216,8 @@ export default function App() {
     isMulti,
     selectedTags,
     targetName,
+    relationship,
+    chatContext,
   ]);
 
   const startAnalysis = () => {
@@ -235,6 +240,8 @@ export default function App() {
     setTargetName("");
     setMemo("");
     setSelectedTags([]);
+    setRelationship(null);
+    setChatContext(null);
   };
 
   return (
@@ -479,10 +486,58 @@ export default function App() {
                 )}
               </div>
 
-              {/* Quick tag buttons */}
-              <p className="text-xs font-bold text-gray-500 mb-2">빠른 선택</p>
+              <p className="text-xs font-bold text-gray-500 mb-2">관계</p>
               <div className="flex flex-wrap gap-1.5 mb-4">
-                {QUICK_TAGS.map((tag) => {
+                {RELATIONSHIP_OPTIONS.map((opt) => {
+                  const active = relationship === opt.value;
+                  return (
+                    <button
+                      type="button"
+                      key={opt.value}
+                      onClick={() => setRelationship(active ? null : opt.value)}
+                      className="text-xs px-2.5 py-1.5 rounded-full border transition-all duration-150 active:scale-95"
+                      style={{
+                        background: active ? "#FEE500" : "white",
+                        borderColor: active ? "#FEE500" : "#E5E7EB",
+                        color: active ? "#1a1a1a" : "#6B7280",
+                        fontWeight: active ? "700" : "500",
+                      }}
+                    >
+                      {active ? "✓ " : ""}
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <p className="text-xs font-bold text-gray-500 mb-2">대화 분위기</p>
+              <div className="flex flex-wrap gap-1.5 mb-4">
+                {CONTEXT_OPTIONS.map((opt) => {
+                  const active = chatContext === opt.value;
+                  return (
+                    <button
+                      type="button"
+                      key={opt.value}
+                      onClick={() => setChatContext(active ? null : opt.value)}
+                      className="text-xs px-2.5 py-1.5 rounded-full border transition-all duration-150 active:scale-95"
+                      style={{
+                        background: active ? "#FEE500" : "white",
+                        borderColor: active ? "#FEE500" : "#E5E7EB",
+                        color: active ? "#1a1a1a" : "#6B7280",
+                        fontWeight: active ? "700" : "500",
+                      }}
+                    >
+                      {active ? "✓ " : ""}
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* 행동형 태그 */}
+              <p className="text-xs font-bold text-gray-500 mb-2">행동·패턴 (복수 선택)</p>
+              <div className="flex flex-wrap gap-1.5 mb-4">
+                {BEHAVIOR_TAGS.map((tag) => {
                   const active = selectedTags.includes(tag);
                   return (
                     <button type="button" key={tag} onClick={() => toggleTag(tag)}

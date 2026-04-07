@@ -17,20 +17,52 @@ export const MBTI_META = {
   ISTJ: { emoji: "📋", title: "청렴결백한 논리주의자", color: "#34495E" },
 };
 
-export const QUICK_TAGS = [
-  "말이 많아요",
-  "말이 적어요",
-  "리액션이 과해요",
-  "감정 표현 잘 함",
-  "논리적으로 말함",
-  "즉흥적인 편",
-  "계획적인 편",
-  "공감을 잘 해줘요",
-  "유머 감각 있음",
-  "진지한 편",
-  "답장이 빨라요",
-  "답장이 느려요",
+/** 행동·관찰 중심 태그 (MBTI 방향 힌트 최소화) */
+export const BEHAVIOR_TAGS = [
+  "먼저 연락을 자주 함",
+  "한 번에 길게 답함",
+  "답장이 짧고 빠름",
+  "위로보다 해결책을 말함",
+  "약속 시간을 구체적으로 정함",
+  "약속이 자주 바뀜",
+  "이모티콘/ㅋㅋ를 많이 씀",
+  "감정 표현이 적음",
+  "질문을 자주 던짐",
+  "말을 돌려서 함",
 ];
+
+/** @deprecated BEHAVIOR_TAGS 사용 권장 */
+export const QUICK_TAGS = BEHAVIOR_TAGS;
+
+export const RELATIONSHIP_OPTIONS = [
+  { value: "friend", label: "친구" },
+  { value: "some", label: "썸" },
+  { value: "lover", label: "연인" },
+  { value: "coworker", label: "직장동료" },
+  { value: "family", label: "가족" },
+  { value: "other", label: "기타" },
+];
+
+export const CONTEXT_OPTIONS = [
+  { value: "daily", label: "일상" },
+  { value: "work", label: "업무" },
+  { value: "conflict", label: "갈등" },
+  { value: "comfort", label: "위로" },
+  { value: "plan", label: "약속" },
+  { value: "casual", label: "잡담" },
+];
+
+export function getRelationshipLabel(value) {
+  if (!value || typeof value !== "string") return "";
+  const o = RELATIONSHIP_OPTIONS.find((x) => x.value === value);
+  return o?.label ?? "";
+}
+
+export function getContextLabel(value) {
+  if (!value || typeof value !== "string") return "";
+  const o = CONTEXT_OPTIONS.find((x) => x.value === value);
+  return o?.label ?? "";
+}
 
 export function getMbtiMeta(type) {
   return (

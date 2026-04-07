@@ -21,6 +21,10 @@ export default function useAnalysis() {
   const [images, setImages] = useState([]);
   const [targetName, setTargetName] = useState("");
   const [memo, setMemo] = useState("");
+  /** 행동형 태그 (메모 텍스트와 분리) */
+  const [selectedTags, setSelectedTags] = useState([]);
+  const [relationship, setRelationship] = useState(null);
+  const [chatContext, setChatContext] = useState(null);
   const [loadingStep, setLoadingStep] = useState(0);
   const [result, setResult] = useState(null);
   const [freeCount, setFreeCount] = useState(null);
@@ -37,7 +41,11 @@ export default function useAnalysis() {
   const maxImages =
     activeTab === "premium" ? MAX_IMAGES_PREMIUM : MAX_IMAGES_FREE;
   const isMulti = imageCount >= 2;
-  const hasMemo = memo.trim().length > 0;
+  const hasMemo =
+    memo.trim().length > 0 ||
+    selectedTags.length > 0 ||
+    Boolean(relationship) ||
+    Boolean(chatContext);
   const isPremiumTab = activeTab === "premium";
 
   const canAnalyze = isPremiumTab
@@ -122,12 +130,9 @@ export default function useAnalysis() {
   }, []);
 
   const toggleTag = useCallback((tag) => {
-    setMemo((prev) => {
-      const lines = prev.split("\n").filter(Boolean);
-      if (lines.includes(tag))
-        return lines.filter((l) => l !== tag).join("\n");
-      return [...lines, tag].join("\n");
-    });
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
+    );
   }, []);
 
   const startLoading = useCallback(
@@ -208,6 +213,9 @@ export default function useAnalysis() {
           images: base64Images,
           paymentId,
           mode,
+          tags: selectedTags,
+          relationship: relationship || undefined,
+          chatContext: chatContext || undefined,
         }),
       });
 
@@ -223,7 +231,15 @@ export default function useAnalysis() {
 
       return data;
     },
-    [images, targetName, memo, isPremiumTab],
+    [
+      images,
+      targetName,
+      memo,
+      isPremiumTab,
+      selectedTags,
+      relationship,
+      chatContext,
+    ],
   );
 
   const requestAnalysis = useCallback(async () => {
@@ -313,6 +329,9 @@ export default function useAnalysis() {
     setImages([]);
     setTargetName("");
     setMemo("");
+    setSelectedTags([]);
+    setRelationship(null);
+    setChatContext(null);
     setError(null);
     setActiveTabState("free");
   }, [images]);
@@ -327,6 +346,11 @@ export default function useAnalysis() {
     images,
     targetName,
     memo,
+    selectedTags,
+    relationship,
+    chatContext,
+    setRelationship,
+    setChatContext,
     loadingStep,
     result,
     freeCount,

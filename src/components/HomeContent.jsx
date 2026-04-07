@@ -323,14 +323,17 @@ export default function HomeContent() {
               }
             />
 
-            {analysis.isDeepTab && (
-              <MemoCard
-                memo={analysis.memo}
-                onMemoChange={analysis.setMemo}
-                onToggleTag={analysis.toggleTag}
-                isDeep
-              />
-            )}
+            <MemoCard
+              memo={analysis.memo}
+              onMemoChange={analysis.setMemo}
+              selectedTags={analysis.selectedTags}
+              onToggleTag={analysis.toggleTag}
+              relationship={analysis.relationship}
+              onRelationshipChange={analysis.setRelationship}
+              chatContext={analysis.chatContext}
+              onChatContextChange={analysis.setChatContext}
+              isDeep={analysis.isDeepTab}
+            />
 
             <AnalyzeButton
               canAnalyze={analysis.canAnalyze}

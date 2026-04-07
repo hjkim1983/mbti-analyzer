@@ -53,11 +53,17 @@ export default function AnalyzeButton({
             {hasMemo ? "✓" : "○"} 추가 정보 {hasMemo ? "입력됨" : "선택"}
           </span>
         ) : (
-          <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-white/40 text-gray-400">
-            Free · 캡처만
+          <span
+            className={`text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1 ${
+              hasMemo
+                ? "bg-green-50 text-green-600"
+                : "bg-white/40 text-gray-400"
+            }`}
+          >
+            {hasMemo ? "✓" : "○"} 맥락·태그 {hasMemo ? "입력" : "선택"}
           </span>
         )}
-        {(isMulti || (isDeepTab && hasMemo)) && (
+        {(isMulti || hasMemo) && (
           <span
             className="text-xs px-2.5 py-1 rounded-full font-bold flex items-center gap-1"
             style={{ background: "rgba(254,229,0,0.2)", color: "#856C00" }}
