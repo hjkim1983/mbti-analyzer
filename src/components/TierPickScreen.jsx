@@ -7,6 +7,9 @@ const REL_ICONS = {
   premium: "✨",
 };
 
+/** 무료·프리미엄 티어 카드 동일 최소 높이 */
+const TIER_CARD_MIN_H = "min-h-[8.1rem]";
+
 /**
  * 무료/유료(프리미엄) 선택 — mbti-input-prototype-v5 톤
  * @param {{ onPickFree: () => void, onPickPremium: () => void, freeRemaining: number | null }} p
@@ -57,7 +60,7 @@ export default function TierPickScreen({
         <button
           type="button"
           onClick={onPickFree}
-          className="mbti-warm-card text-left p-5 rounded-[1.125rem] transition-all duration-200 active:scale-[0.99] hover:shadow-md border border-orange-200/30 hover:border-orange-300/50 min-h-[8.1rem] flex flex-col"
+          className={`mbti-warm-card text-left p-5 rounded-[1.125rem] transition-all duration-200 active:scale-[0.99] hover:shadow-md border-2 border-orange-200/30 hover:border-orange-300/50 ${TIER_CARD_MIN_H} flex flex-col`}
         >
           <div className="flex gap-4 flex-1 items-stretch min-h-0">
             <span className="text-3xl shrink-0" aria-hidden>
@@ -95,7 +98,7 @@ export default function TierPickScreen({
         <button
           type="button"
           onClick={onPickPremium}
-          className="mbti-warm-card text-left p-5 rounded-[1.125rem] transition-all duration-200 active:scale-[0.99] hover:shadow-md border-2 border-orange-300/40 hover:border-orange-400/60 min-h-[8.1rem] flex flex-col"
+          className={`mbti-warm-card text-left p-5 rounded-[1.125rem] transition-all duration-200 active:scale-[0.99] hover:shadow-md border-2 border-orange-300/40 hover:border-orange-400/60 ${TIER_CARD_MIN_H} flex flex-col`}
           style={{
             boxShadow: "0 4px 20px rgba(232,120,10,0.12)",
           }}
