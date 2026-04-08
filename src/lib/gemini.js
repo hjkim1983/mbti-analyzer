@@ -9,6 +9,59 @@ const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${
 /** API 라우트 maxDuration(60s)보다 짧게 — 긴 JSON 생성 시 여유 */
 const TIMEOUT_MS = 58000;
 
+/** 503·UNAVAILABLE 등 일시 오류 시 재시도 (환경변수로 조절) */
+function getGeminiMaxRetries() {
+  const n = parseInt(process.env.GEMINI_MAX_RETRIES ?? "3", 10);
+  if (!Number.isFinite(n)) return 3;
+  return Math.min(5, Math.max(1, n));
+}
+
+function getGeminiRetryBaseMs() {
+  const n = parseInt(process.env.GEMINI_RETRY_BASE_MS ?? "1200", 10);
+  if (!Number.isFinite(n)) return 1200;
+  return Math.min(8000, Math.max(400, n));
+}
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+/** Google 측 일시 과부하·용량 — 잠시 후 재시도 가치 있음 */
+function isTransientGeminiError(status, errText) {
+  if (status === 503 || status === 502 || status === 504) return true;
+  try {
+    const j = JSON.parse(errText);
+    const st = j?.error?.status;
+    if (st === "UNAVAILABLE" || st === "DEADLINE_EXCEEDED") return true;
+  } catch {
+    /* 본문이 JSON이 아니면 status 코드만 사용 */
+  }
+  return false;
+}
+
+function throwGeminiHttpError(status, errText) {
+  let parsed = null;
+  try {
+    parsed = JSON.parse(errText);
+  } catch {
+    /* 유지 */
+  }
+  const apiMsg = parsed?.error?.message;
+  const unavailable =
+    status === 503 ||
+    parsed?.error?.status === "UNAVAILABLE" ||
+    (typeof apiMsg === "string" &&
+      apiMsg.toLowerCase().includes("high demand"));
+  const message = unavailable
+    ? "AI 분석 서버가 잠시 과부하 상태예요. 1~2분 뒤 다시 시도해 주세요."
+    : `Gemini API 오류 (${status}): ${errText.slice(0, 800)}`;
+  const err = new Error(message);
+  err.status = status;
+  err.rawBody = errText;
+  err.rawJson = parsed;
+  throw err;
+}
+
 /**
  * 프리미엄: 한국어+긴 인용·축별 근거 시 5632 등에서는 MAX_TOKENS로 JSON이 중간에 끊김.
  * gemini-2.5-flash 는 충분히 높은 출력 한도를 지원.
@@ -321,20 +374,28 @@ async function postGemini(body) {
     throw new Error("Gemini API 키가 설정되지 않았습니다.");
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const maxAttempts = getGeminiMaxRetries();
+  const baseDelayMs = getGeminiRetryBaseMs();
+  /** @type {Response | null} */
+  let res = null;
 
-  try {
-    const res = await fetch(`${API_ENDPOINT}?key=${apiKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
-    if (!res.ok) {
+    try {
+      res = await fetch(`${API_ENDPOINT}?key=${apiKey}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (res.ok) break;
+
       const errText = await res.text();
+
       if (res.status === 429 || errText.includes("RESOURCE_EXHAUSTED")) {
         const qe = new Error("QUOTA_EXCEEDED");
         qe.status = res.status;
@@ -346,19 +407,36 @@ async function postGemini(body) {
         }
         throw qe;
       }
-      const err = new Error(
-        `Gemini API 오류 (${res.status}): ${errText.slice(0, 800)}`,
-      );
-      err.status = res.status;
-      err.rawBody = errText;
-      try {
-        err.rawJson = JSON.parse(errText);
-      } catch {
-        err.rawJson = null;
+
+      const canRetry =
+        isTransientGeminiError(res.status, errText) &&
+        attempt < maxAttempts - 1;
+
+      if (canRetry) {
+        const wait =
+          baseDelayMs * 2 ** attempt + Math.floor(Math.random() * 400);
+        console.warn(
+          `[Gemini] 일시 오류 ${res.status}, ${attempt + 1}/${maxAttempts}회차 후 ${wait}ms 대기 후 재시도`,
+        );
+        await sleep(wait);
+        continue;
+      }
+
+      throwGeminiHttpError(res.status, errText);
+    } catch (err) {
+      clearTimeout(timeout);
+      if (err.name === "AbortError") {
+        throw new Error("ANALYSIS_TIMEOUT");
       }
       throw err;
     }
+  }
 
+  if (!res || !res.ok) {
+    throw new Error("Gemini 요청이 반복 실패했습니다. 잠시 후 다시 시도해 주세요.");
+  }
+
+  try {
     const data = await res.json();
 
     const candidate = data.candidates?.[0];
@@ -406,10 +484,6 @@ async function postGemini(body) {
     pe.finishReason = finishReason;
     throw pe;
   } catch (err) {
-    clearTimeout(timeout);
-    if (err.name === "AbortError") {
-      throw new Error("ANALYSIS_TIMEOUT");
-    }
     throw err;
   }
 }
