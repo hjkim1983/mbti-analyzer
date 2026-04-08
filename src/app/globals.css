@@ -257,3 +257,40 @@ mark.hl-mark {
   background: rgba(254 252 232, 0.55);
   padding-left: 0.75rem;
 }
+
+/* ─── 골드 아코디언 (ResultScreen 공통) ─── */
+.accordion-gold-card {
+  background: linear-gradient(145deg, #fffbea 0%, #fef3c7 60%, #fde68a 100%);
+  border: 1.5px solid #d4a017;
+  border-radius: 16px;
+  box-shadow:
+    0 3px 0 #c9920a,
+    0 6px 20px rgba(160, 120, 0, 0.13);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.accordion-gold-card:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 4px 0 #b8890c,
+    0 10px 28px rgba(160, 120, 0, 0.2);
+}
+
+.acc-stagger-in {
+  opacity: 0;
+  animation: acc-stagger-fade 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation-delay: var(--stagger-delay, 0ms);
+}
+
+@keyframes acc-stagger-fade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

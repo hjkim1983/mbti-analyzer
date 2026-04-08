@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import GlassCard from "./GlassCard";
 import ReadableBlock from "./ReadableBlock";
 import { getMbtiMeta } from "@/constants/mbti-data";
@@ -36,6 +36,96 @@ const AXIS_COMPACT_TITLE = {
   JP: "J vs. P",
 };
 
+const ACCORDION_MAX_H = 9999;
+const ACCORDION_EASE = "cubic-bezier(0.4, 0, 0.2, 1)";
+
+function ClickBadge() {
+  return (
+    <span
+      className="inline-flex shrink-0 items-center rounded-[6px] px-1.5 py-0.5 text-[11px] font-bold"
+      style={{
+        background: "rgba(180,120,0,0.13)",
+        color: "#B45309",
+      }}
+    >
+      [클릭]
+    </span>
+  );
+}
+
+/** 열릴 때 왼쪽→오른쪽으로 채워지는 축 게이지 (0.9s) */
+function AxisGaugeBar({ open, confPct }) {
+  const [w, setW] = useState(0);
+  useEffect(() => {
+    if (!open) {
+      setW(0);
+      return;
+    }
+    const tid = window.setTimeout(() => {
+      setW(Math.min(100, Math.max(0, confPct)));
+    }, 60);
+    return () => clearTimeout(tid);
+  }, [open, confPct]);
+
+  return (
+    <div className="mb-3.5 h-3 w-full overflow-hidden rounded-full bg-amber-100/90">
+      <div
+        className="h-full rounded-full"
+        style={{
+          width: `${w}%`,
+          transition: `width 0.9s ${ACCORDION_EASE}`,
+          background: "linear-gradient(90deg, #FBBF24, #D97706, #B45309)",
+        }}
+      />
+    </div>
+  );
+}
+
+/** 골드 스타일 + max-height 아코디언 (후보·소통팁·관계·실전 공통) */
+function GoldAccordion({ idPrefix, open, onToggle, title, children }) {
+  const panelId = `${idPrefix}-panel`;
+  const triggerId = `${idPrefix}-trigger`;
+  return (
+    <div className="accordion-gold-card mb-4">
+      <button
+        type="button"
+        id={triggerId}
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={onToggle}
+        className="flex w-full items-start justify-between gap-3 rounded-2xl p-4 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-600/40"
+      >
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+          {title}
+          <ClickBadge />
+        </div>
+        <span
+          className={`shrink-0 pt-0.5 text-sm font-bold leading-none text-[#78350F] transition-transform duration-[450ms] ease-[cubic-bezier(0.4,0,0.2,1)] ${
+            open ? "rotate-180" : ""
+          }`}
+          aria-hidden
+        >
+          ▼
+        </span>
+      </button>
+      <div
+        id={panelId}
+        role="region"
+        aria-labelledby={triggerId}
+        className="overflow-hidden"
+        style={{
+          maxHeight: open ? ACCORDION_MAX_H : 0,
+          transition: `max-height 450ms ${ACCORDION_EASE}`,
+        }}
+      >
+        <div className="border-t border-amber-400/25 px-4 pb-4 pt-3">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ResultScreen({
   result,
   targetName,
@@ -49,6 +139,12 @@ export default function ResultScreen({
   const [axisExpanded, setAxisExpanded] = useState(() =>
     Object.fromEntries(AXIS_ORDER.map((k) => [k, false])),
   );
+  const [candidateAccordionOpen, setCandidateAccordionOpen] = useState(false);
+  const [communicationTipsAccordionOpen, setCommunicationTipsAccordionOpen] =
+    useState(false);
+  const [relationshipAccordionOpen, setRelationshipAccordionOpen] =
+    useState(false);
+  const [practicalAccordionOpen, setPracticalAccordionOpen] = useState(false);
 
   if (!result) return null;
 
@@ -335,11 +431,7 @@ export default function ResultScreen({
                   AXIS_COMPACT_TITLE[key] ?? `${key[0]} vs. ${key[1]}`;
 
                 return (
-                  <GlassCard
-                    key={key}
-                    animate
-                    className="!p-0 overflow-hidden border-2 border-amber-300/70 shadow-md rounded-[1.25rem] bg-transparent"
-                  >
+                  <div key={key} className="accordion-gold-card mb-4">
                     <button
                       type="button"
                       id={`axis-trigger-${key}`}
@@ -351,173 +443,177 @@ export default function ResultScreen({
                           [key]: !prev[key],
                         }))
                       }
-                      className={
-                        open
-                          ? "w-full flex flex-row items-center justify-between gap-3 px-4 py-3 text-left bg-gradient-to-r from-amber-200 via-yellow-200 to-amber-100 hover:brightness-[1.02] active:brightness-95 transition-[filter] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-50"
-                          : "w-full flex flex-col items-center justify-center text-center px-6 py-10 sm:py-12 bg-gradient-to-br from-amber-200 via-yellow-100 to-orange-100 hover:brightness-[1.03] active:brightness-95 transition-[filter] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-50"
-                      }
+                      className="flex w-full items-start justify-between gap-3 rounded-2xl p-4 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-600/40"
                     >
-                      {open ? (
-                        <>
-                          <p className="text-base font-extrabold text-amber-950 tracking-wide">
-                            {compactTitle}
-                          </p>
-                          <span className="shrink-0 text-amber-900/80 text-sm font-bold flex items-center gap-1">
-                            접기
-                            <span aria-hidden>▲</span>
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <p className="text-3xl sm:text-4xl font-black text-amber-950 tracking-tight leading-none drop-shadow-sm">
-                            {compactTitle}
-                          </p>
-                          <p className="text-sm sm:text-base font-semibold text-amber-900/90 mt-4 max-w-[18rem] leading-relaxed">
-                            <span className="font-extrabold text-amber-950">
-                              이 축
-                            </span>
-                            ,{" "}
-                            <span className="font-extrabold text-amber-950">
-                              대화 속
-                            </span>
-                            에서{" "}
-                            <span className="font-extrabold text-amber-950">
-                              어느 쪽
-                            </span>
-                            에 더 가까울까요?
-                          </p>
-                          <p className="text-xs sm:text-sm font-semibold text-amber-800/85 mt-3 max-w-[17rem] leading-relaxed">
-                            <span className="font-extrabold text-amber-950">
-                              근거
-                            </span>
-                            와{" "}
-                            <span className="font-extrabold text-amber-950">
-                              판단 강도
-                            </span>
-                            는{" "}
-                            <span className="font-extrabold text-amber-950">
-                              눌러서 알아보기
-                            </span>
-                          </p>
-                          <span
-                            className="mt-5 text-amber-900/60 text-xl select-none"
-                            aria-hidden
-                          >
-                            ▼
-                          </span>
-                        </>
-                      )}
-                    </button>
-                    {open && (
-                      <div
-                        id={panelId}
-                        role="region"
-                        aria-labelledby={`axis-trigger-${key}`}
-                        className="px-5 pb-5 pt-0 border-t border-amber-200/80 bg-white/90 backdrop-blur-sm"
+                      <div className="min-w-0 flex-1 pr-2">
+                        <p
+                          className="text-[24px] font-bold leading-tight text-[#78350F]"
+                          style={{
+                            textShadow: "0 1px 2px rgba(120, 53, 15, 0.12)",
+                          }}
+                        >
+                          {compactTitle}
+                        </p>
+                        <p className="mt-2 flex flex-wrap items-center gap-2 text-sm font-medium text-[#78350F]/95">
+                          이 축, 대화 속에서 어느 쪽에 더 가까울까요?
+                          <ClickBadge />
+                        </p>
+                      </div>
+                      <span
+                        className={`shrink-0 text-sm font-bold leading-none text-[#78350F] transition-transform duration-[450ms] ease-[cubic-bezier(0.4,0,0.2,1)] ${
+                          open ? "rotate-180" : ""
+                        }`}
+                        aria-hidden
                       >
-                        <div className="flex items-center justify-between gap-2 mb-3 flex-wrap pt-4">
-                          <p className="text-base font-extrabold text-gray-900 leading-snug">
-                            <span
-                              style={{ color: leftWins ? color : "#9CA3AF" }}
-                            >
-                              {leftL}
-                            </span>
-                            <span className="text-gray-400 font-normal mx-1.5">
-                              /
-                            </span>
-                            <span
-                              style={{ color: !leftWins ? color : "#9CA3AF" }}
-                            >
-                              {rightL}
+                        ▼
+                      </span>
+                    </button>
+                    <div
+                      id={panelId}
+                      role="region"
+                      aria-labelledby={`axis-trigger-${key}`}
+                      className="overflow-hidden"
+                      style={{
+                        maxHeight: open ? ACCORDION_MAX_H : 0,
+                        transition: `max-height 450ms ${ACCORDION_EASE}`,
+                      }}
+                    >
+                      {open && (
+                        <div className="border-t border-amber-400/25 bg-white/50 px-4 pb-4 pt-4 backdrop-blur-[2px]">
+                          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-base font-extrabold leading-snug text-gray-900">
+                              <span
+                                style={{
+                                  color: leftWins ? color : "#9CA3AF",
+                                }}
+                              >
+                                {leftL}
+                              </span>
+                              <span className="mx-1.5 font-normal text-gray-400">
+                                /
+                              </span>
+                              <span
+                                style={{
+                                  color: !leftWins ? color : "#9CA3AF",
+                                }}
+                              >
+                                {rightL}
+                              </span>
+                            </p>
+                            {ambiguous && (
+                              <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-900">
+                                판단 애매
+                              </span>
+                            )}
+                          </div>
+                          <AxisGaugeBar open={open} confPct={conf} />
+                          <p className="mb-4 text-xs leading-relaxed text-gray-600">
+                            이 축{" "}
+                            <span className="font-bold text-gray-900">
+                              판단 강도
+                            </span>{" "}
+                            약{" "}
+                            <span className="font-bold text-gray-900">
+                              {conf}%
                             </span>
                           </p>
-                          {ambiguous && (
-                            <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-900">
-                              판단 애매
-                            </span>
+                          {forList.length > 0 && (
+                            <div className="mb-5 last:mb-0">
+                              <p className="mb-2.5 text-xs font-extrabold tracking-wide text-emerald-800">
+                                찬성 근거
+                              </p>
+                              <ul className="space-y-3">
+                                {forList.map((t, i) => (
+                                  <li
+                                    key={i}
+                                    className="acc-stagger-in"
+                                    style={{
+                                      "--stagger-delay": `${i * 90}ms`,
+                                    }}
+                                  >
+                                    <div
+                                      className="flex gap-2.5 rounded-lg px-2.5 py-2"
+                                      style={{
+                                        background: "rgba(34, 197, 94, 0.09)",
+                                        color: "#166534",
+                                      }}
+                                    >
+                                      <span className="shrink-0 pt-0.5 font-bold text-emerald-700">
+                                        ✓
+                                      </span>
+                                      <div className="min-w-0 flex-1">
+                                        <ReadableBlock
+                                          text={String(t)}
+                                          compact
+                                          className="text-sm text-emerald-900 read-body-p--scan"
+                                        />
+                                      </div>
+                                    </div>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {againstList.length > 0 && (
+                            <div>
+                              <p className="mb-2.5 text-xs font-extrabold tracking-wide text-amber-950">
+                                반대·예외 근거
+                              </p>
+                              <ul className="space-y-3">
+                                {againstList.map((t, i) => (
+                                  <li
+                                    key={i}
+                                    className="acc-stagger-in"
+                                    style={{
+                                      "--stagger-delay": `${(forList.length + i) * 90}ms`,
+                                    }}
+                                  >
+                                    <div
+                                      className="flex gap-2.5 rounded-lg px-2.5 py-2"
+                                      style={{
+                                        background: "rgba(245, 158, 11, 0.1)",
+                                        color: "#78350F",
+                                      }}
+                                    >
+                                      <span className="shrink-0 pt-0.5 font-bold text-amber-800">
+                                        ⚠
+                                      </span>
+                                      <div className="min-w-0 flex-1">
+                                        <ReadableBlock
+                                          text={String(t)}
+                                          compact
+                                          className="text-sm text-amber-950 read-body-p--scan"
+                                        />
+                                      </div>
+                                    </div>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
                           )}
                         </div>
-                        <div className="h-2 bg-gray-100/80 rounded-full overflow-hidden mb-3.5">
-                          <div
-                            className="h-full rounded-full transition-all duration-700"
-                            style={{
-                              width: `${conf}%`,
-                              background: `linear-gradient(90deg,${color}88,${color})`,
-                            }}
-                          />
-                        </div>
-                        <p className="text-xs text-gray-600 mb-4 leading-relaxed">
-                          이 축{" "}
-                          <span className="font-bold text-gray-900">
-                            판단 강도
-                          </span>{" "}
-                          약{" "}
-                          <span className="font-bold text-gray-900">{conf}%</span>
-                        </p>
-                        {forList.length > 0 && (
-                          <div className="mb-5 last:mb-0">
-                            <p className="text-xs font-extrabold text-emerald-900 mb-2.5 tracking-wide">
-                              찬성 근거
-                            </p>
-                            <ul className="space-y-3">
-                              {forList.map((t, i) => (
-                                <li key={i}>
-                                  <div className="read-li-long read-li-long--evidence-for flex gap-2.5 items-start text-gray-800">
-                                    <span className="font-bold text-emerald-700 shrink-0 pt-0.5">
-                                      ✓
-                                    </span>
-                                    <div className="min-w-0 flex-1">
-                                      <ReadableBlock
-                                        text={String(t)}
-                                        compact
-                                        className="text-sm text-gray-800 read-body-p--scan"
-                                      />
-                                    </div>
-                                  </div>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                        {againstList.length > 0 && (
-                          <div>
-                            <p className="text-xs font-extrabold text-amber-950 mb-2.5 tracking-wide">
-                              반대·예외 근거
-                            </p>
-                            <ul className="space-y-3">
-                              {againstList.map((t, i) => (
-                                <li key={i}>
-                                  <div className="read-li-long read-li-long--evidence-against flex gap-2.5 items-start text-gray-700">
-                                    <span className="font-bold text-amber-700 shrink-0 pt-0.5">
-                                      ⚠
-                                    </span>
-                                    <div className="min-w-0 flex-1">
-                                      <ReadableBlock
-                                        text={String(t)}
-                                        compact
-                                        className="text-sm text-gray-700 read-body-p--scan"
-                                      />
-                                    </div>
-                                  </div>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </GlassCard>
+                      )}
+                    </div>
+                  </div>
                 );
               })}
             </div>
           )}
 
-          {/* 3. 후보 3개 — 세로 목록 + 순위별 신뢰도 */}
+          {/* 3. 후보 3개 — 골드 아코디언 */}
           {candidateRows.length > 0 && (
-            <div>
-              <h3 className="font-extrabold text-gray-900 mb-3 text-sm flex items-center gap-2">
-                <span>🔀</span> 유력 MBTI 후보
-              </h3>
+            <GoldAccordion
+              idPrefix="candidates"
+              open={candidateAccordionOpen}
+              onToggle={() =>
+                setCandidateAccordionOpen((v) => !v)
+              }
+              title={
+                <h3 className="font-extrabold text-gray-900 text-sm flex items-center gap-2">
+                  <span>🔀</span> 유력 MBTI 후보
+                </h3>
+              }
+            >
               <div className="flex flex-col gap-3">
                 {candidateRows.map((row, idx) => {
                   const meta = getMbtiMeta(row.type);
@@ -563,7 +659,7 @@ export default function ResultScreen({
                   );
                 })}
               </div>
-            </div>
+            </GoldAccordion>
           )}
 
           {isPremium && (oneLineConclusion?.trim() || title) && (
@@ -592,27 +688,37 @@ export default function ResultScreen({
             </div>
           )}
 
-          {/* 5. 소통 팁 */}
+          {/* 5. 소통 팁 — 골드 아코디언 */}
           {communicationTipLines.length > 0 && (
-            <GlassCard animate className="!p-4 border border-emerald-100/80 bg-emerald-50/20">
-              <h3 className="font-extrabold text-gray-900 mb-2 text-sm flex items-center gap-2">
-                <span>🤝</span>
-                이 사람과 소통하는 팁
-              </h3>
-              <ol className="list-decimal pl-5 space-y-3 text-sm text-gray-800">
-                {communicationTipLines.map((t, i) => (
-                  <li key={i} className="pl-1 marker:font-bold">
-                    <div className="read-li-long read-li-long--emerald -ml-1">
-                      <ReadableBlock
-                        text={String(t)}
-                        compact
-                        className="text-sm text-gray-800 read-body-p--scan"
-                      />
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </GlassCard>
+            <GoldAccordion
+              idPrefix="comm-tips"
+              open={communicationTipsAccordionOpen}
+              onToggle={() =>
+                setCommunicationTipsAccordionOpen((v) => !v)
+              }
+              title={
+                <h3 className="font-extrabold text-gray-900 text-sm flex items-center gap-2">
+                  <span>🤝</span>
+                  이 사람과 소통하는 팁
+                </h3>
+              }
+            >
+              <GlassCard animate className="!p-4 border border-emerald-100/80 bg-emerald-50/20">
+                <ol className="list-decimal pl-5 space-y-3 text-sm text-gray-800">
+                  {communicationTipLines.map((t, i) => (
+                    <li key={i} className="pl-1 marker:font-bold">
+                      <div className="read-li-long read-li-long--emerald -ml-1">
+                        <ReadableBlock
+                          text={String(t)}
+                          compact
+                          className="text-sm text-gray-800 read-body-p--scan"
+                        />
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </GlassCard>
+            </GoldAccordion>
           )}
 
           {/* 6. 분석에 대한 설명 (순위 근거 + 한계) */}
@@ -1151,98 +1257,108 @@ export default function ResultScreen({
           relationshipAndCommunication.replyAndEmoji?.trim() ||
           relationshipAndCommunication.contactPreference?.trim() ||
           relationshipAndCommunication.tips?.length > 0) && (
-        <GlassCard animate delay={2} className="mb-4 w-full">
-          <h3 className="font-extrabold text-gray-900 mb-3 text-base flex items-center gap-2 leading-snug">
-            <span
-              className="w-8 h-8 rounded-xl flex items-center justify-center text-base shrink-0"
-              style={{ background: "#FBCFE8" }}
-            >
-              💕
-            </span>
-            관계·소통 스타일
-          </h3>
-          {relationshipAndCommunication.summary?.trim() && (
-            <div className="mb-5">
-              <ReadableBlock
-                text={relationshipAndCommunication.summary}
-                className="text-base text-gray-800 read-body-p--scan"
-              />
-            </div>
-          )}
-          {[
-            {
-              k: "whenInterested",
-              label: "호감이 있을 때",
-              v: relationshipAndCommunication.whenInterested,
-            },
-            {
-              k: "whenUncomfortable",
-              label: "불편할 때",
-              v: relationshipAndCommunication.whenUncomfortable,
-            },
-            {
-              k: "whenClose",
-              label: "친해졌을 때",
-              v: relationshipAndCommunication.whenClose,
-            },
-            {
-              k: "inConflict",
-              label: "갈등·싸움",
-              v: relationshipAndCommunication.inConflict,
-            },
-            {
-              k: "replyAndEmoji",
-              label: "답장·이모티콘·말투",
-              v: relationshipAndCommunication.replyAndEmoji,
-            },
-            {
-              k: "contactPreference",
-              label: "연락 선호",
-              v: relationshipAndCommunication.contactPreference,
-            },
-          ]
-            .filter((x) => x.v?.trim())
-            .map((x) => (
-              <div
-                key={x.k}
-                className="mb-4 last:mb-0 p-4 rounded-2xl bg-pink-50/40 border border-pink-100/80"
+        <GoldAccordion
+          idPrefix="relationship"
+          open={relationshipAccordionOpen}
+          onToggle={() =>
+            setRelationshipAccordionOpen((v) => !v)
+          }
+          title={
+            <h3 className="font-extrabold text-gray-900 text-base flex items-center gap-2 leading-snug">
+              <span
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-base"
+                style={{ background: "#FBCFE8" }}
               >
-                <p className="text-sm font-extrabold text-pink-900 mb-2">
-                  {x.label}
-                </p>
+                💕
+              </span>
+              관계·소통 스타일
+            </h3>
+          }
+        >
+          <GlassCard animate delay={2} className="w-full !shadow-none">
+            {relationshipAndCommunication.summary?.trim() && (
+              <div className="mb-5">
                 <ReadableBlock
-                  text={x.v}
-                  compact
-                  className="text-sm text-gray-800 read-body-p--scan"
+                  text={relationshipAndCommunication.summary}
+                  className="text-base text-gray-800 read-body-p--scan"
                 />
               </div>
-            ))}
-          {relationshipAndCommunication.tips?.length > 0 && (
-            <div className="mt-4 pt-1 border-t border-pink-100/60">
-              <p className="text-sm font-bold text-gray-700 mb-3">
-                <mark className="hl-mark">연락·만남</mark> 전에 참고하면 좋아요
-              </p>
-              <ul className="space-y-3">
-                {relationshipAndCommunication.tips.map((t, i) => (
-                  <li key={i}>
-                    <div className="flex gap-2.5 items-start">
-                      <span className="text-pink-500 font-bold shrink-0 pt-0.5">
-                        ✓
-                      </span>
-                      <div className="read-li-long read-li-long--pink min-w-0 flex-1">
-                        <ReadableBlock
-                          text={String(t)}
-                          compact
-                          className="text-sm text-gray-700 read-body-p--scan"
-                        />
+            )}
+            {[
+              {
+                k: "whenInterested",
+                label: "호감이 있을 때",
+                v: relationshipAndCommunication.whenInterested,
+              },
+              {
+                k: "whenUncomfortable",
+                label: "불편할 때",
+                v: relationshipAndCommunication.whenUncomfortable,
+              },
+              {
+                k: "whenClose",
+                label: "친해졌을 때",
+                v: relationshipAndCommunication.whenClose,
+              },
+              {
+                k: "inConflict",
+                label: "갈등·싸움",
+                v: relationshipAndCommunication.inConflict,
+              },
+              {
+                k: "replyAndEmoji",
+                label: "답장·이모티콘·말투",
+                v: relationshipAndCommunication.replyAndEmoji,
+              },
+              {
+                k: "contactPreference",
+                label: "연락 선호",
+                v: relationshipAndCommunication.contactPreference,
+              },
+            ]
+              .filter((x) => x.v?.trim())
+              .map((x) => (
+                <div
+                  key={x.k}
+                  className="mb-4 last:mb-0 rounded-2xl border border-pink-100/80 bg-pink-50/40 p-4"
+                >
+                  <p className="mb-2 text-sm font-extrabold text-pink-900">
+                    {x.label}
+                  </p>
+                  <ReadableBlock
+                    text={x.v}
+                    compact
+                    className="text-sm text-gray-800 read-body-p--scan"
+                  />
+                </div>
+              ))}
+            {relationshipAndCommunication.tips?.length > 0 && (
+              <div className="mt-4 border-t border-pink-100/60 pt-1">
+                <p className="mb-3 text-sm font-bold text-gray-700">
+                  <mark className="hl-mark">연락·만남</mark> 전에 참고하면 좋아요
+                </p>
+                <ul className="space-y-3">
+                  {relationshipAndCommunication.tips.map((t, i) => (
+                    <li key={i}>
+                      <div className="flex items-start gap-2.5">
+                        <span className="shrink-0 pt-0.5 font-bold text-pink-500">
+                          ✓
+                        </span>
+                        <div className="read-li-long read-li-long--pink min-w-0 flex-1">
+                          <ReadableBlock
+                            text={String(t)}
+                            compact
+                            className="text-sm text-gray-700 read-body-p--scan"
+                          />
+                        </div>
                       </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </GlassCard>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </GlassCard>
+        </GoldAccordion>
       )}
 
       {/* 프리미엄: 실전 소통 팁 */}
@@ -1253,66 +1369,82 @@ export default function ResultScreen({
           practicalTips.whenHurt?.length > 0 ||
           practicalTips.conflictAvoid?.length > 0 ||
           practicalTips.scheduling?.length > 0) && (
-        <GlassCard
-          animate
-          delay={2}
-          className="mb-4 w-full border border-emerald-100 bg-emerald-50/20"
+        <GoldAccordion
+          idPrefix="practical"
+          open={practicalAccordionOpen}
+          onToggle={() =>
+            setPracticalAccordionOpen((v) => !v)
+          }
+          title={
+            <h3 className="font-extrabold text-gray-900 text-base flex items-center gap-2 leading-snug">
+              <span
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-base"
+                style={{ background: "#6EE7B7" }}
+              >
+                ✅
+              </span>
+              실전 소통 가이드
+            </h3>
+          }
         >
-          <h3 className="font-extrabold text-gray-900 mb-3 text-base flex items-center gap-2 leading-snug">
-            <span
-              className="w-8 h-8 rounded-xl flex items-center justify-center text-base shrink-0"
-              style={{ background: "#6EE7B7" }}
-            >
-              🎯
-            </span>
-            실전 소통 가이드
-          </h3>
-          {practicalTips.emotionVsDirect?.trim() && (
-            <div className="mb-4 p-3 rounded-xl bg-white/50">
-              <p className="text-sm font-extrabold text-emerald-900 mb-2">
-                <mark className="hl-mark">감정</mark> vs{" "}
-                <mark className="hl-mark">핵심</mark>
-              </p>
-              <ReadableBlock
-                text={practicalTips.emotionVsDirect}
-                compact
-                className="text-sm text-gray-800 read-body-p--scan"
-              />
-            </div>
-          )}
-          {[
-            { title: "이렇게 말하면 잘 통할 수 있어요", items: practicalTips.effectiveCommunication },
-            { title: "서운함을 전할 때", items: practicalTips.whenHurt },
-            { title: "갈등 시 피하면 좋은 방식", items: practicalTips.conflictAvoid },
-            { title: "약속·일정·제안", items: practicalTips.scheduling },
-          ]
-            .filter((s) => s.items?.length > 0)
-            .map((s) => (
-              <div key={s.title} className="mb-4 last:mb-0">
-                <p className="text-sm font-extrabold text-emerald-900 mb-2">
-                  {s.title}
+          <GlassCard
+            animate
+            delay={2}
+            className="w-full border border-emerald-100 bg-emerald-50/20 !shadow-none"
+          >
+            {practicalTips.emotionVsDirect?.trim() && (
+              <div className="mb-4 rounded-xl bg-white/50 p-3">
+                <p className="mb-2 text-sm font-extrabold text-emerald-900">
+                  <mark className="hl-mark">감정</mark> vs{" "}
+                  <mark className="hl-mark">핵심</mark>
                 </p>
-                <ul className="space-y-2.5">
-                  {s.items.map((line, i) => (
-                    <li key={i}>
-                      <div className="flex gap-2 items-start">
-                        <span className="text-emerald-700 font-bold shrink-0">
-                          •
-                        </span>
-                        <div className="read-li-long read-li-long--emerald min-w-0 flex-1">
-                          <ReadableBlock
-                            text={String(line)}
-                            compact
-                            className="text-sm text-gray-700 read-body-p--scan"
-                          />
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                <ReadableBlock
+                  text={practicalTips.emotionVsDirect}
+                  compact
+                  className="text-sm text-gray-800 read-body-p--scan"
+                />
               </div>
-            ))}
-        </GlassCard>
+            )}
+            {[
+              {
+                title: "이렇게 말하면 잘 통할 수 있어요",
+                items: practicalTips.effectiveCommunication,
+              },
+              { title: "서운함을 전할 때", items: practicalTips.whenHurt },
+              {
+                title: "갈등 시 피하면 좋은 방식",
+                items: practicalTips.conflictAvoid,
+              },
+              { title: "약속·일정·제안", items: practicalTips.scheduling },
+            ]
+              .filter((s) => s.items?.length > 0)
+              .map((s) => (
+                <div key={s.title} className="mb-4 last:mb-0">
+                  <p className="mb-2 text-sm font-extrabold text-emerald-900">
+                    {s.title}
+                  </p>
+                  <ul className="space-y-2.5">
+                    {s.items.map((line, i) => (
+                      <li key={i}>
+                        <div className="flex items-start gap-2">
+                          <span className="shrink-0 font-bold text-emerald-700">
+                            •
+                          </span>
+                          <div className="read-li-long read-li-long--emerald min-w-0 flex-1">
+                            <ReadableBlock
+                              text={String(line)}
+                              compact
+                              className="text-sm text-gray-700 read-body-p--scan"
+                            />
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+          </GlassCard>
+        </GoldAccordion>
       )}
 
       {/* 프리미엄: 일·학습·협업 — 요약 또는 팁만 있어도 동일 폭 카드로 표시 */}
