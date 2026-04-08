@@ -305,7 +305,9 @@ export default function ResultScreen({
             <div className="space-y-4">
               <p className="text-xs font-bold text-gray-600 px-1 leading-relaxed">
                 네 가지 성향 축 —{" "}
-                <mark className="hl-mark text-xs">찬성·반대 근거</mark>
+                <span className="font-extrabold text-gray-800">
+                  찬성·반대 근거
+                </span>
               </p>
               {AXIS_ORDER.map((key) => {
                 const ax = axisForCards[key];
@@ -370,15 +372,29 @@ export default function ResultScreen({
                           <p className="text-3xl sm:text-4xl font-black text-amber-950 tracking-tight leading-none drop-shadow-sm">
                             {compactTitle}
                           </p>
-                          <p className="text-sm sm:text-base font-bold text-amber-900/90 mt-4 max-w-[18rem] leading-relaxed">
-                            <mark className="hl-mark">이 축</mark>,{" "}
-                            <mark className="hl-mark">대화 속</mark>에서{" "}
-                            <mark className="hl-mark">어느 쪽</mark>에 더
-                            가까울까요?
+                          <p className="text-sm sm:text-base font-semibold text-amber-900/90 mt-4 max-w-[18rem] leading-relaxed">
+                            <span className="font-extrabold text-amber-950">
+                              이 축
+                            </span>
+                            ,{" "}
+                            <span className="font-extrabold text-amber-950">
+                              대화 속
+                            </span>
+                            에서{" "}
+                            <span className="font-extrabold text-amber-950">
+                              어느 쪽
+                            </span>
+                            에 더 가까울까요?
                           </p>
-                          <p className="text-xs sm:text-sm font-semibold text-amber-800/80 mt-3 max-w-[17rem] leading-relaxed">
-                            <mark className="hl-mark">근거</mark>와{" "}
-                            <mark className="hl-mark">판단 강도</mark>는{" "}
+                          <p className="text-xs sm:text-sm font-semibold text-amber-800/85 mt-3 max-w-[17rem] leading-relaxed">
+                            <span className="font-extrabold text-amber-950">
+                              근거
+                            </span>
+                            와{" "}
+                            <span className="font-extrabold text-amber-950">
+                              판단 강도
+                            </span>
+                            는{" "}
                             <span className="font-extrabold text-amber-950">
                               눌러서 알아보기
                             </span>
@@ -432,13 +448,16 @@ export default function ResultScreen({
                         </div>
                         <p className="text-xs text-gray-600 mb-4 leading-relaxed">
                           이 축{" "}
-                          <mark className="hl-mark">판단 강도</mark> 약{" "}
+                          <span className="font-bold text-gray-900">
+                            판단 강도
+                          </span>{" "}
+                          약{" "}
                           <span className="font-bold text-gray-900">{conf}%</span>
                         </p>
                         {forList.length > 0 && (
                           <div className="mb-5 last:mb-0">
-                            <p className="text-xs font-bold text-emerald-800 mb-2.5 tracking-wide">
-                              <mark className="hl-mark">찬성 근거</mark>
+                            <p className="text-xs font-extrabold text-emerald-900 mb-2.5 tracking-wide">
+                              찬성 근거
                             </p>
                             <ul className="space-y-3">
                               {forList.map((t, i) => (
@@ -462,8 +481,8 @@ export default function ResultScreen({
                         )}
                         {againstList.length > 0 && (
                           <div>
-                            <p className="text-xs font-bold text-amber-900 mb-2.5 tracking-wide">
-                              <mark className="hl-mark">반대·예외 근거</mark>
+                            <p className="text-xs font-extrabold text-amber-950 mb-2.5 tracking-wide">
+                              반대·예외 근거
                             </p>
                             <ul className="space-y-3">
                               {againstList.map((t, i) => (
