@@ -32,9 +32,10 @@ const nextConfig = {
     const devCsp = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-eval' 'unsafe-inline' blob: https://cdn.portone.io",
-      "style-src 'self' 'unsafe-inline' https://cdn.portone.io",
+      /* globals.css Pretendard @import — jsdelivr 스타일시트·폰트 파일 */
+      "style-src 'self' 'unsafe-inline' https://cdn.portone.io https://cdn.jsdelivr.net",
       "img-src 'self' data: blob: https:",
-      "font-src 'self' data: https://cdn.portone.io",
+      "font-src 'self' data: https://cdn.portone.io https://cdn.jsdelivr.net",
       "connect-src 'self' https: http: ws: wss:",
       "frame-src 'self' https: data:",
       "frame-ancestors 'self'",

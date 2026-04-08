@@ -214,11 +214,42 @@ export async function POST(request) {
         }
         return NextResponse.json(payload, { status: 429 });
       }
+
+      /** Gemini 503·UNAVAILABLE 등 — 재시도 후에도 실패한 일시 과부하 */
+      const httpStatus =
+        typeof err.status === "number" ? err.status : undefined;
+      const msg =
+        typeof err.message === "string" ? err.message : "";
+      const isGeminiUnavailable =
+        httpStatus === 503 ||
+        httpStatus === 502 ||
+        httpStatus === 504 ||
+        msg.includes("과부하") ||
+        msg.includes("잠시") && msg.includes("다시 시도");
+
+      if (isGeminiUnavailable) {
+        const payload = {
+          success: false,
+          error: "GEMINI_UNAVAILABLE",
+          message:
+            msg ||
+            "AI 분석 서버가 잠시 사용할 수 없어요. 잠시 후 다시 시도해 주세요.",
+          ...devErr,
+        };
+        if (devMode) {
+          console.log(
+            "[DEV_MODE] /api/analyze 응답",
+            JSON.stringify(payload, null, 2),
+          );
+        }
+        return NextResponse.json(payload, { status: 503 });
+      }
+
       console.error("Gemini 분석 오류:", err);
       const failPayload = {
         success: false,
         error: "ANALYSIS_FAILED",
-        message: "AI 분석 중 오류가 발생했습니다.",
+        message: msg || "AI 분석 중 오류가 발생했습니다.",
         ...devErr,
       };
       if (devMode) {
