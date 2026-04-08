@@ -22,8 +22,17 @@ export default function TierPickScreen({
   return (
     <div className="relative z-10 pt-8 pb-6 px-1 mbti-warm-fade-in">
       <div className="text-center mb-10">
-        <div className="inline-flex items-center justify-center w-[4.5rem] h-[4.5rem] rounded-3xl mb-5 shadow-lg text-3xl mbti-warm-card border border-orange-200/40">
-          💬
+        {/* 헤더 로고와 동일 — 카카오톡 톤 옐로(#FEE500) */}
+        <div
+          className="inline-flex items-center justify-center w-[4.5rem] h-[4.5rem] rounded-3xl mb-5 text-4xl"
+          style={{
+            background: "#FEE500",
+            boxShadow: "0 8px 28px rgba(254, 229, 0, 0.45)",
+          }}
+        >
+          <span className="leading-none" aria-hidden>
+            💬
+          </span>
         </div>
         <h1
           className="text-[1.65rem] font-extrabold leading-snug mb-3"
