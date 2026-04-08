@@ -165,7 +165,7 @@ export async function POST(request) {
         {
           success: false,
           error: "INVALID_INPUT",
-          message: "관계 선택과 행동 문항 10개에 모두 답해주세요",
+          message: "관계 선택과 행동 문항 7개에 모두 답해주세요",
         },
         { status: 400 },
       );

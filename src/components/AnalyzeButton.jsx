@@ -1,6 +1,7 @@
 "use client";
 
 import { FREE_LIMIT } from "@/lib/analysis-tier";
+import { BEHAVIOR_QUESTIONS } from "@/constants/behavior-questions";
 
 const PRICE = 1900;
 
@@ -61,7 +62,7 @@ export default function AnalyzeButton({
               : "bg-white/40 text-gray-400"
           }`}
         >
-          {behaviorOk ? "✓" : "○"} 문항 10
+          {behaviorOk ? "✓" : "○"} 문항 {BEHAVIOR_QUESTIONS.length}
         </span>
         {isDeepTab && (
           <span

@@ -275,7 +275,7 @@ export default function HomeContent() {
     tierImagesOk &&
     !analysis.canAnalyze &&
     (!analysis.relationship || !analysis.allBehaviorAnswered)
-      ? "관계 선택과 10개 문항에 모두 답해주세요"
+      ? "관계 선택과 7개 문항에 모두 답해주세요"
       : null;
 
   const loadingMode = analysis.isDeepTab

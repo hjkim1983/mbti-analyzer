@@ -1,5 +1,5 @@
 /**
- * 행동 관찰 문항 (2단계 입력) — 순서·id 고정. axis/weight는 UI에 노출하지 않음.
+ * 행동 관찰 문항 (2단계 입력) — 7문항, 순서·id 고정. axis/weight는 UI에 노출하지 않음.
  */
 export const BEHAVIOR_QUESTIONS = [
   {
@@ -58,39 +58,12 @@ export const BEHAVIOR_QUESTIONS = [
   },
   {
     id: "q7",
-    question: "이 사람이 카톡 보내는 시간",
-    optionA: "비교적 일정함 (출퇴근 시간, 점심 등)",
-    optionB: "불규칙함 (새벽에 갑자기, 며칠 잠수 후 폭풍)",
-    axis: "JP",
-    weightA: "J",
-    weightB: "P",
-  },
-  {
-    id: "q8",
-    question: '이 사람한테 "이거 어떻게 생각해?"라고 물어보면',
-    optionA: '"그건 이래서 맞아/틀려" 판단을 바로 함',
-    optionB: '"음... 상황에 따라 다르지 않을까?" 여지를 남김',
-    axis: "TJ_FP",
-    weightA: "TJ",
-    weightB: "FP",
-  },
-  {
-    id: "q9",
     question: "이 사람이 카톡 대화를 마무리할 때",
     optionA: '"ㅇㅋ", "알겠어" 짧게 끊음',
     optionB: '"그래 잘자~!", "오늘 고마웠어💕" 따뜻하게 마무리',
     axis: "TF",
     weightA: "T",
     weightB: "F",
-  },
-  {
-    id: "q10",
-    question: "이 사람이 칭찬할 때",
-    optionA: '구체적임 ("이 부분 진짜 잘했다", "그 선택 좋았어")',
-    optionB: '포괄적임 ("너 진짜 대단해!", "완전 최고👏")',
-    axis: "TS_FN",
-    weightA: "TS",
-    weightB: "FN",
   },
 ];
 

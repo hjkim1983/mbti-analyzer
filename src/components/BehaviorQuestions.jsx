@@ -9,7 +9,7 @@ const btnBase =
   "flex-1 text-left text-xs leading-snug px-3 py-2.5 rounded-xl border transition-all duration-150 active:scale-[0.99]";
 
 /**
- * 관계 선택 후 — 행동 관찰 문항 10개 (필수, skip 허용)
+ * 관계 선택 후 — 행동 관찰 문항 7개 (필수, skip 허용)
  */
 export default function BehaviorQuestions({
   relationship,

@@ -2,7 +2,7 @@ import { BEHAVIOR_QUESTION_IDS } from "@/constants/behavior-questions";
 
 /**
  * 행동 문항 답변을 Gemini 프롬프트용 한국어 요약으로 변환합니다.
- * @param {Record<string, string>} answers — { q1: "A"|"B"|"skip", ... }
+ * @param {Record<string, string>} answers — { q1: "A"|"B"|"skip", ... } (현재 7문항)
  */
 export function formatBehaviorAnswers(answers) {
   if (!answers || typeof answers !== "object") return "";
@@ -39,24 +39,9 @@ export function formatBehaviorAnswers(answers) {
       B: "중간 리액션 (E 신호)",
     },
     q7: {
-      question: "카톡 시간 패턴",
-      A: "일정함 (J 신호)",
-      B: "불규칙 (P 신호)",
-    },
-    q8: {
-      question: "판단 스타일",
-      A: "즉시 판단 (T+J 신호)",
-      B: "여지 남김 (F+P 신호)",
-    },
-    q9: {
       question: "마무리 스타일",
       A: "짧게 끊음 (T 신호)",
       B: "따뜻하게 마무리 (F 신호)",
-    },
-    q10: {
-      question: "칭찬 스타일",
-      A: "구체적 (T+S 신호)",
-      B: "포괄적 (F+N 신호)",
     },
   };
 
