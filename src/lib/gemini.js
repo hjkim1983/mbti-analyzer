@@ -79,8 +79,11 @@ function throwGeminiHttpError(status, errText) {
  */
 const PREMIUM_MAX_OUTPUT_TOKENS = 16384;
 
-/** 무료: 짧은 스키마면 충분 */
-const FREE_MAX_OUTPUT_TOKENS = 1536;
+/**
+ * 무료: axisAnalysis(축별 forEvidence 다수)·후보 3개·observedFeatures 등으로
+ * 1536에서는 MAX_TOKENS로 JSON이 잘리는 경우가 잦음 → 여유 있게 확보.
+ */
+const FREE_MAX_OUTPUT_TOKENS = 8192;
 
 /** compact 파일 없을 때 최소 규칙만 유지 */
 const INLINE_SKILL_FALLBACK =
