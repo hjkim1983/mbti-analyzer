@@ -4,16 +4,27 @@ import { ANALYSIS_MODE } from "./analysis-tier";
 import { getRelationshipLabel } from "@/constants/mbti-data";
 import { formatBehaviorAnswers } from "@/lib/format-behavior-answers";
 
-const MODEL = "gemini-2.5-flash";
-const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+
+/** 서버 전용: 과부하 시 `gemini-2.0-flash` 등으로 바꿔 시도 가능 */
+function getGeminiModel() {
+  const m = (process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL).trim();
+  return m || DEFAULT_GEMINI_MODEL;
+}
+
+function getGeminiGenerateContentUrl() {
+  const model = getGeminiModel();
+  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+}
+
 /** API 라우트 maxDuration(60s)보다 짧게 — 긴 JSON 생성 시 여유 */
 const TIMEOUT_MS = 58000;
 
-/** 503·UNAVAILABLE 등 일시 오류 시 재시도 (환경변수로 조절) */
+/** 503·UNAVAILABLE 등 일시 오류 시 재시도 (환경변수로 조절, 기본 5회·최대 8회) */
 function getGeminiMaxRetries() {
-  const n = parseInt(process.env.GEMINI_MAX_RETRIES ?? "3", 10);
-  if (!Number.isFinite(n)) return 3;
-  return Math.min(5, Math.max(1, n));
+  const n = parseInt(process.env.GEMINI_MAX_RETRIES ?? "5", 10);
+  if (!Number.isFinite(n)) return 5;
+  return Math.min(8, Math.max(1, n));
 }
 
 function getGeminiRetryBaseMs() {
@@ -384,7 +395,8 @@ async function postGemini(body) {
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
     try {
-      res = await fetch(`${API_ENDPOINT}?key=${apiKey}`, {
+      const endpoint = getGeminiGenerateContentUrl();
+      res = await fetch(`${endpoint}?key=${apiKey}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
