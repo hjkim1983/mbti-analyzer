@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import GlassCard from "./GlassCard";
+import ReadableBlock from "./ReadableBlock";
 import { getMbtiMeta } from "@/constants/mbti-data";
 import {
   ANALYSIS_MODE,
@@ -302,8 +303,9 @@ export default function ResultScreen({
           {axisForCards &&
             AXIS_ORDER.some((k) => axisForCards[k]) && (
             <div className="space-y-4">
-              <p className="text-xs font-bold text-gray-500 px-1 leading-relaxed">
-                네 가지 성향 축 — 찬성·반대 근거
+              <p className="text-xs font-bold text-gray-600 px-1 leading-relaxed">
+                네 가지 성향 축 —{" "}
+                <mark className="hl-mark text-xs">찬성·반대 근거</mark>
               </p>
               {AXIS_ORDER.map((key) => {
                 const ax = axisForCards[key];
@@ -368,11 +370,18 @@ export default function ResultScreen({
                           <p className="text-3xl sm:text-4xl font-black text-amber-950 tracking-tight leading-none drop-shadow-sm">
                             {compactTitle}
                           </p>
-                          <p className="text-sm sm:text-base font-bold text-amber-900/90 mt-4 max-w-[16rem] leading-snug">
-                            이 축, 대화 속에서 어느 쪽에 더 가까울까요?
+                          <p className="text-sm sm:text-base font-bold text-amber-900/90 mt-4 max-w-[18rem] leading-relaxed">
+                            <mark className="hl-mark">이 축</mark>,{" "}
+                            <mark className="hl-mark">대화 속</mark>에서{" "}
+                            <mark className="hl-mark">어느 쪽</mark>에 더
+                            가까울까요?
                           </p>
-                          <p className="text-xs sm:text-sm font-semibold text-amber-800/75 mt-2">
-                            근거와 판단 강도는 눌러서 알아보기
+                          <p className="text-xs sm:text-sm font-semibold text-amber-800/80 mt-3 max-w-[17rem] leading-relaxed">
+                            <mark className="hl-mark">근거</mark>와{" "}
+                            <mark className="hl-mark">판단 강도</mark>는{" "}
+                            <span className="font-extrabold text-amber-950">
+                              눌러서 알아보기
+                            </span>
                           </p>
                           <span
                             className="mt-5 text-amber-900/60 text-xl select-none"
@@ -421,21 +430,31 @@ export default function ResultScreen({
                             }}
                           />
                         </div>
-                        <p className="text-xs text-gray-500 mb-4 leading-relaxed">
-                          이 축 판단 강도 약 {conf}%
+                        <p className="text-xs text-gray-600 mb-4 leading-relaxed">
+                          이 축{" "}
+                          <mark className="hl-mark">판단 강도</mark> 약{" "}
+                          <span className="font-bold text-gray-900">{conf}%</span>
                         </p>
                         {forList.length > 0 && (
                           <div className="mb-5 last:mb-0">
                             <p className="text-xs font-bold text-emerald-800 mb-2.5 tracking-wide">
-                              찬성 근거
+                              <mark className="hl-mark">찬성 근거</mark>
                             </p>
-                            <ul className="space-y-3.5">
+                            <ul className="space-y-3">
                               {forList.map((t, i) => (
-                                <li
-                                  key={i}
-                                  className="text-sm text-gray-700 pl-3 py-0.5 border-l-[3px] border-emerald-200 leading-relaxed"
-                                >
-                                  ✅ {String(t)}
+                                <li key={i}>
+                                  <div className="read-li-long read-li-long--evidence-for flex gap-2.5 items-start text-gray-800">
+                                    <span className="font-bold text-emerald-700 shrink-0 pt-0.5">
+                                      ✓
+                                    </span>
+                                    <div className="min-w-0 flex-1">
+                                      <ReadableBlock
+                                        text={String(t)}
+                                        compact
+                                        className="text-sm text-gray-800 read-body-p--scan"
+                                      />
+                                    </div>
+                                  </div>
                                 </li>
                               ))}
                             </ul>
@@ -444,15 +463,23 @@ export default function ResultScreen({
                         {againstList.length > 0 && (
                           <div>
                             <p className="text-xs font-bold text-amber-900 mb-2.5 tracking-wide">
-                              반대·예외 근거
+                              <mark className="hl-mark">반대·예외 근거</mark>
                             </p>
-                            <ul className="space-y-3.5">
+                            <ul className="space-y-3">
                               {againstList.map((t, i) => (
-                                <li
-                                  key={i}
-                                  className="text-sm text-gray-600 pl-3 py-0.5 border-l-[3px] border-amber-200 leading-relaxed"
-                                >
-                                  ⚠️ {String(t)}
+                                <li key={i}>
+                                  <div className="read-li-long read-li-long--evidence-against flex gap-2.5 items-start text-gray-700">
+                                    <span className="font-bold text-amber-700 shrink-0 pt-0.5">
+                                      ⚠
+                                    </span>
+                                    <div className="min-w-0 flex-1">
+                                      <ReadableBlock
+                                        text={String(t)}
+                                        compact
+                                        className="text-sm text-gray-700 read-body-p--scan"
+                                      />
+                                    </div>
+                                  </div>
                                 </li>
                               ))}
                             </ul>
@@ -533,13 +560,16 @@ export default function ResultScreen({
 
           {/* 4. 왜 헷갈리는지 */}
           {boundaryNote?.trim() && (
-            <div
-              className="rounded-2xl p-4 border border-sky-100 bg-sky-50/50 text-sm text-sky-950 leading-relaxed"
-            >
-              <p className="font-extrabold text-sky-900 mb-1 flex items-center gap-2">
-                <span>💡</span> 왜 헷갈릴 수 있나요
+            <div className="rounded-2xl p-4 border border-sky-100 bg-sky-50/50 text-sm text-sky-950">
+              <p className="font-extrabold text-sky-900 mb-2 flex items-center gap-2">
+                <span>💡</span>{" "}
+                <mark className="hl-mark">왜 헷갈릴 수 있나요</mark>
               </p>
-              {boundaryNote}
+              <ReadableBlock
+                text={boundaryNote}
+                compact
+                className="text-sm text-sky-950 read-body-p--scan"
+              />
             </div>
           )}
 
@@ -550,10 +580,16 @@ export default function ResultScreen({
                 <span>🤝</span>
                 이 사람과 소통하는 팁
               </h3>
-              <ol className="list-decimal list-inside space-y-2 text-sm text-gray-800">
+              <ol className="list-decimal pl-5 space-y-3 text-sm text-gray-800">
                 {communicationTipLines.map((t, i) => (
-                  <li key={i} className="leading-relaxed">
-                    {t}
+                  <li key={i} className="pl-1 marker:font-bold">
+                    <div className="read-li-long read-li-long--emerald -ml-1">
+                      <ReadableBlock
+                        text={String(t)}
+                        compact
+                        className="text-sm text-gray-800 read-body-p--scan"
+                      />
+                    </div>
                   </li>
                 ))}
               </ol>
@@ -567,29 +603,40 @@ export default function ResultScreen({
                 분석에 대한 설명
               </p>
               <p className="text-sm text-gray-600 mb-3 leading-relaxed">
-                이 분석은 제한된 데이터를 기반으로 한 추정이에요. 아래에서는
-                1~3순위 후보가 왜 이렇게 제시되었는지와, 해석 시 알아 두면 좋은
-                한계를 함께 안내합니다.
+                이 분석은{" "}
+                <mark className="hl-mark">제한된 데이터</mark>를 기반으로 한
+                추정이에요. 아래에서는{" "}
+                <span className="font-bold text-gray-800">1~3순위 후보</span>가
+                왜 이렇게 제시되었는지와,{" "}
+                <span className="font-bold text-gray-800">해석 시 한계</span>를
+                함께 안내합니다.
               </p>
               {analysisExplanationText.length > 0 && (
-                <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap mb-4">
-                  {analysisExplanationText}
-                </p>
+                <div className="mb-4">
+                  <ReadableBlock
+                    text={analysisExplanationText}
+                    compact
+                    className="text-sm text-gray-800 read-body-p--scan whitespace-pre-wrap"
+                  />
+                </div>
               )}
               {limitationLinesAll.length > 0 && (
                 <>
                   {analysisExplanationText.length > 0 && (
                     <p className="text-xs font-bold text-gray-600 mb-2">
-                      추가로 참고할 점
+                      <mark className="hl-mark">추가로 참고할 점</mark>
                     </p>
                   )}
-                  <ul className="space-y-2">
+                  <ul className="space-y-2.5">
                     {limitationLinesAll.map((line, i) => (
-                      <li
-                        key={i}
-                        className="text-sm text-gray-700 leading-relaxed pl-1 border-l-2 border-gray-300"
-                      >
-                        {line}
+                      <li key={i}>
+                        <div className="read-li-long border-l-[3px] border-gray-300 bg-white/35 pl-2">
+                          <ReadableBlock
+                            text={String(line)}
+                            compact
+                            className="text-sm text-gray-700 read-body-p--scan"
+                          />
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -600,11 +647,17 @@ export default function ResultScreen({
 
           {/* 7. 프로필 인상 */}
           {profileImageNote?.trim() && (
-            <p className="text-[11px] text-gray-500 text-center px-2 leading-relaxed">
-              <span className="font-bold text-gray-600">📸 참고: 프로필 사진 인상</span>
-              <br />
-              {profileImageNote}
-            </p>
+            <div className="text-[11px] text-gray-500 text-center px-2">
+              <p className="font-bold text-gray-600 mb-1.5">
+                📸 참고:{" "}
+                <mark className="hl-mark">프로필 사진 인상</mark>
+              </p>
+              <ReadableBlock
+                text={profileImageNote}
+                compact
+                className="text-[11px] text-gray-500 read-body-p--scan text-center"
+              />
+            </div>
           )}
 
           {/* 8. 축소 MBTI 카드 — 위 GlassCard·후보 박스와 동일 가로 폭 */}
@@ -651,9 +704,16 @@ export default function ResultScreen({
             가장 유력한 후보입니다
           </p>
           {isPremium && confidenceReason?.trim() && (
-            <p className="text-[11px] text-gray-600 text-center px-2 leading-relaxed">
-              왜 이 정도로 봤나요? {confidenceReason}
-            </p>
+            <div className="text-[11px] text-gray-600 px-2 mt-2 max-w-md mx-auto text-left">
+              <p className="font-bold text-gray-700 mb-1.5 text-center">
+                <mark className="hl-mark">왜 이 정도로 봤나요?</mark>
+              </p>
+              <ReadableBlock
+                text={confidenceReason}
+                compact
+                className="text-[11px] text-gray-600 read-body-p--scan"
+              />
+            </div>
           )}
         </div>
       )}
@@ -695,9 +755,16 @@ export default function ResultScreen({
             )}
           </p>
           {isPremium && confidenceReason?.trim() && (
-            <p className="text-[11px] text-gray-600 mb-3 px-1 leading-relaxed">
-              왜 이 정도로 봤나요? {confidenceReason}
-            </p>
+            <div className="text-[11px] text-gray-600 mb-3 px-1 max-w-md mx-auto text-left">
+              <p className="font-bold text-gray-700 mb-1.5 text-center">
+                <mark className="hl-mark">왜 이 정도로 봤나요?</mark>
+              </p>
+              <ReadableBlock
+                text={confidenceReason}
+                compact
+                className="text-[11px] text-gray-600 read-body-p--scan"
+              />
+            </div>
           )}
           {!isPremium && <p className="text-[10px] text-gray-400 mb-3">캡처만으로는 오판 가능성이 있어요</p>}
           {isPremium && !confidenceReason?.trim() && <div className="mb-2" />}
@@ -999,16 +1066,24 @@ export default function ResultScreen({
             </div>
           )}
           {alternativeTypes.whyFirst?.trim() && (
-            <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line border-t border-violet-100 pt-3">
-              <span className="font-bold text-violet-900">최종 선택 이유 — </span>
-              {alternativeTypes.whyFirst}
-            </p>
+            <div className="border-t border-violet-100 pt-3">
+              <p className="text-sm font-extrabold text-violet-900 mb-2">
+                <mark className="hl-mark">최종 선택 이유</mark>
+              </p>
+              <ReadableBlock
+                text={alternativeTypes.whyFirst}
+                compact
+                className="text-sm text-gray-800 read-body-p--scan"
+              />
+            </div>
           )}
           {!alternativeTypes.whyFirst?.trim() &&
             alternativeTypes.distinction?.trim() && (
-            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
-              {alternativeTypes.distinction}
-            </p>
+            <ReadableBlock
+              text={alternativeTypes.distinction}
+              compact
+              className="text-sm text-gray-700 read-body-p--scan"
+            />
           )}
         </GlassCard>
       )}
@@ -1068,9 +1143,12 @@ export default function ResultScreen({
             관계·소통 스타일
           </h3>
           {relationshipAndCommunication.summary?.trim() && (
-            <p className="text-base text-gray-800 leading-[1.7] mb-5">
-              {relationshipAndCommunication.summary}
-            </p>
+            <div className="mb-5">
+              <ReadableBlock
+                text={relationshipAndCommunication.summary}
+                className="text-base text-gray-800 read-body-p--scan"
+              />
+            </div>
           )}
           {[
             {
@@ -1113,22 +1191,33 @@ export default function ResultScreen({
                 <p className="text-sm font-extrabold text-pink-900 mb-2">
                   {x.label}
                 </p>
-                <p className="text-sm text-gray-800 leading-[1.7]">{x.v}</p>
+                <ReadableBlock
+                  text={x.v}
+                  compact
+                  className="text-sm text-gray-800 read-body-p--scan"
+                />
               </div>
             ))}
           {relationshipAndCommunication.tips?.length > 0 && (
             <div className="mt-4 pt-1 border-t border-pink-100/60">
               <p className="text-sm font-bold text-gray-700 mb-3">
-                연락·만남 전에 참고하면 좋아요
+                <mark className="hl-mark">연락·만남</mark> 전에 참고하면 좋아요
               </p>
-              <ul className="space-y-2.5">
+              <ul className="space-y-3">
                 {relationshipAndCommunication.tips.map((t, i) => (
-                  <li
-                    key={i}
-                    className="text-sm text-gray-700 flex gap-2.5 leading-[1.65]"
-                  >
-                    <span className="text-pink-500 font-bold shrink-0">✓</span>
-                    <span>{t}</span>
+                  <li key={i}>
+                    <div className="flex gap-2.5 items-start">
+                      <span className="text-pink-500 font-bold shrink-0 pt-0.5">
+                        ✓
+                      </span>
+                      <div className="read-li-long read-li-long--pink min-w-0 flex-1">
+                        <ReadableBlock
+                          text={String(t)}
+                          compact
+                          className="text-sm text-gray-700 read-body-p--scan"
+                        />
+                      </div>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -1160,10 +1249,17 @@ export default function ResultScreen({
             실전 소통 가이드
           </h3>
           {practicalTips.emotionVsDirect?.trim() && (
-            <p className="text-sm text-gray-800 mb-4 p-3 rounded-xl bg-white/50 leading-[1.7]">
-              <span className="font-bold text-emerald-900">감정 vs 핵심 — </span>
-              {practicalTips.emotionVsDirect}
-            </p>
+            <div className="mb-4 p-3 rounded-xl bg-white/50">
+              <p className="text-sm font-extrabold text-emerald-900 mb-2">
+                <mark className="hl-mark">감정</mark> vs{" "}
+                <mark className="hl-mark">핵심</mark>
+              </p>
+              <ReadableBlock
+                text={practicalTips.emotionVsDirect}
+                compact
+                className="text-sm text-gray-800 read-body-p--scan"
+              />
+            </div>
           )}
           {[
             { title: "이렇게 말하면 잘 통할 수 있어요", items: practicalTips.effectiveCommunication },
@@ -1177,10 +1273,21 @@ export default function ResultScreen({
                 <p className="text-sm font-extrabold text-emerald-900 mb-2">
                   {s.title}
                 </p>
-                <ul className="space-y-2">
+                <ul className="space-y-2.5">
                   {s.items.map((line, i) => (
-                    <li key={i} className="text-sm text-gray-700 leading-[1.65] pl-1">
-                      • {line}
+                    <li key={i}>
+                      <div className="flex gap-2 items-start">
+                        <span className="text-emerald-700 font-bold shrink-0">
+                          •
+                        </span>
+                        <div className="read-li-long read-li-long--emerald min-w-0 flex-1">
+                          <ReadableBlock
+                            text={String(line)}
+                            compact
+                            className="text-sm text-gray-700 read-body-p--scan"
+                          />
+                        </div>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -1206,9 +1313,12 @@ export default function ResultScreen({
             일·학습·협업
           </h3>
           {workAndRoutine.summary?.trim() && (
-            <p className="text-base text-gray-700 leading-[1.7] mb-5">
-              {workAndRoutine.summary}
-            </p>
+            <div className="mb-5">
+              <ReadableBlock
+                text={workAndRoutine.summary}
+                className="text-base text-gray-700 read-body-p--scan"
+              />
+            </div>
           )}
           {workAndRoutine.tips?.length > 0 && (
             <div
@@ -1219,16 +1329,23 @@ export default function ResultScreen({
               }
             >
               <p className="text-sm font-bold text-gray-700 mb-3">
-                협업·학습에서 이렇게 맞춰 보세요
+                <mark className="hl-mark">협업·학습</mark>에서 이렇게 맞춰 보세요
               </p>
-              <ul className="space-y-2.5">
+              <ul className="space-y-3">
                 {workAndRoutine.tips.map((t, i) => (
-                  <li
-                    key={i}
-                    className="text-sm text-gray-700 flex gap-2.5 leading-[1.65]"
-                  >
-                    <span className="text-sky-600 font-bold shrink-0">•</span>
-                    <span>{t}</span>
+                  <li key={i}>
+                    <div className="flex gap-2.5 items-start">
+                      <span className="text-sky-600 font-bold shrink-0 pt-0.5">
+                        •
+                      </span>
+                      <div className="read-li-long read-li-long--sky min-w-0 flex-1">
+                        <ReadableBlock
+                          text={String(t)}
+                          compact
+                          className="text-sm text-gray-700 read-body-p--scan"
+                        />
+                      </div>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -1286,9 +1403,13 @@ export default function ResultScreen({
             </span>
             입력하신 정보
           </h3>
-          <p className="text-sm text-gray-600 leading-relaxed bg-white/40 rounded-2xl p-3 whitespace-pre-line">
-            {memo}
-          </p>
+          <div className="bg-white/40 rounded-2xl p-3">
+            <ReadableBlock
+              text={memo}
+              compact
+              className="text-sm text-gray-600 read-body-p--scan"
+            />
+          </div>
         </GlassCard>
       )}
 

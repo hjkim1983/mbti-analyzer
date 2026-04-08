@@ -175,3 +175,85 @@ textarea:focus, input:focus { outline: none; }
   border-radius: 1.125rem;
   box-shadow: 0 2px 16px rgba(200, 160, 100, 0.1);
 }
+
+/* ─── 긴 본문 가독성 ─── */
+.read-body-wrap {
+  max-width: 65ch;
+}
+
+.read-body-p {
+  line-height: 1.85;
+  letter-spacing: -0.02em;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  color: rgb(31 41 55);
+}
+
+.read-body-p + .read-body-p {
+  margin-top: 0.9rem;
+}
+
+/* 목록·근거 안 본문: 첫 줄만 굵게 (빠른 스캔) */
+.read-body-p--scan::first-line {
+  font-weight: 600;
+  color: rgb(17 24 39);
+}
+
+/* 형광펜형 인라인 강조 (인용 「」 등) */
+mark.hl-mark {
+  font-weight: 700;
+  background: linear-gradient(
+    transparent 38%,
+    rgba(253, 224, 71, 0.72) 38%,
+    rgba(253, 224, 71, 0.72) 88%,
+    transparent 88%
+  );
+  padding: 0 0.1em;
+  border-radius: 0.2em;
+  color: inherit;
+}
+
+/* 긴 목록 줄: 첫 줄만 살짝 굵게 해 스캔하기 쉽게 */
+.read-li-long {
+  display: block;
+  font-size: 0.9375rem;
+  line-height: 1.8;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.read-li-long::first-line {
+  font-weight: 600;
+  color: rgb(17 24 39);
+}
+
+.read-li-long--pink {
+  background: rgba(252, 231, 243, 0.45);
+  border-left: 3px solid rgb(244 114 182);
+  padding-left: 0.75rem;
+}
+
+.read-li-long--sky {
+  background: rgba(224, 242, 254, 0.45);
+  border-left: 3px solid rgb(56 189 248);
+  padding-left: 0.75rem;
+}
+
+.read-li-long--emerald {
+  background: rgba(209, 250, 229, 0.35);
+  border-left: 3px solid rgb(52 211 153);
+  padding-left: 0.75rem;
+}
+
+.read-li-long--evidence-for {
+  border-left: 3px solid rgb(110 231 183);
+  background: rgba(236, 253, 245, 0.55);
+  padding-left: 0.75rem;
+}
+
+.read-li-long--evidence-against {
+  border-left: 3px solid rgb(251 191 36);
+  background: rgba(254 252 232, 0.55);
+  padding-left: 0.75rem;
+}
