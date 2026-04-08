@@ -15,6 +15,18 @@
   --color-error: #EF4444;
 
   --gradient-bg: linear-gradient(135deg, #FFF9C4 0%, #E8EAF6 50%, #F3E5F5 100%);
+
+  /* mbti-input-prototype-v5 톤 — 크림·오렌지 */
+  --mbti-warm-bg-top: #fffbf0;
+  --mbti-warm-bg-bottom: #fff7e6;
+  --mbti-warm-accent: #e8780a;
+  --mbti-warm-accent-dark: #c2650a;
+  --mbti-warm-accent-light: #f5a623;
+  --mbti-warm-text: #2d1f0e;
+  --mbti-warm-text-body: #5c4a32;
+  --mbti-warm-text-muted: #9a8770;
+  --mbti-warm-card: rgba(255, 255, 255, 0.85);
+  --mbti-warm-border: rgba(200, 180, 150, 0.3);
 }
 
 body {
@@ -93,3 +105,73 @@ body {
 .delay-6 { animation-delay: 0.66s; opacity: 0; }
 
 textarea:focus, input:focus { outline: none; }
+
+/* v5 스타일 플로우 배경 (티어 선택·프리미엄 마법사) */
+.mbti-warm-shell {
+  position: relative;
+  min-height: 100vh;
+  background: linear-gradient(
+    180deg,
+    var(--mbti-warm-bg-top) 0%,
+    var(--mbti-warm-bg-bottom) 100%
+  );
+  color: var(--mbti-warm-text);
+}
+
+.mbti-warm-shell::before {
+  content: "";
+  position: fixed;
+  top: -5rem;
+  right: -3.75rem;
+  width: 18rem;
+  height: 18rem;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(245, 166, 35, 0.08) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.mbti-warm-shell::after {
+  content: "";
+  position: fixed;
+  bottom: -6rem;
+  left: -5rem;
+  width: 22rem;
+  height: 22rem;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(232, 120, 10, 0.06) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.mbti-warm-fade-in {
+  animation: mbti-fade-slide-in 0.45s ease-out forwards;
+}
+
+@keyframes mbti-fade-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mbti-warm-card {
+  background: var(--mbti-warm-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--mbti-warm-border);
+  border-radius: 1.125rem;
+  box-shadow: 0 2px 16px rgba(200, 160, 100, 0.1);
+}

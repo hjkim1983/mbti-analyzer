@@ -18,6 +18,8 @@ export default function AnalyzeButton({
   relationshipOk = false,
   behaviorOk = false,
   formIncompleteHint = null,
+  /** 무료 캡처만 모드 — 관계·문항 칩 숨김 */
+  freePhotoOnly = false,
 }) {
   const used = freeCount?.used ?? 0;
   const freeNeedsPay = !isDeepTab && used >= FREE_LIMIT;
@@ -33,62 +35,82 @@ export default function AnalyzeButton({
     return "빠른 MBTI 추정 요청";
   })();
 
+  const useWarmCta =
+    freePhotoOnly && canAnalyze && !isLoading && !isDeepTab;
+
   return (
     <div className="anim-slide-up delay-4">
-      <div className="flex items-center gap-2 mb-3 px-1 flex-wrap">
-        <span
-          className={`text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1 ${
-            imageCount > 0
-              ? "bg-green-50 text-green-600"
-              : "bg-white/40 text-gray-400"
-          }`}
-        >
-          {imageCount > 0 ? "✓" : "○"} 캡처{" "}
-          {imageCount > 0 ? `${imageCount}장` : "없음"}
-        </span>
-        <span
-          className={`text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1 ${
-            relationshipOk
-              ? "bg-green-50 text-green-600"
-              : "bg-white/40 text-gray-400"
-          }`}
-        >
-          {relationshipOk ? "✓" : "○"} 관계
-        </span>
-        <span
-          className={`text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1 ${
-            behaviorOk
-              ? "bg-green-50 text-green-600"
-              : "bg-white/40 text-gray-400"
-          }`}
-        >
-          {behaviorOk ? "✓" : "○"} 문항 {BEHAVIOR_QUESTIONS.length}
-        </span>
-        {isDeepTab && (
+      {!freePhotoOnly && (
+        <div className="flex items-center gap-2 mb-3 px-1 flex-wrap">
           <span
             className={`text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1 ${
-              hasMemo
+              imageCount > 0
                 ? "bg-green-50 text-green-600"
                 : "bg-white/40 text-gray-400"
             }`}
           >
-            {hasMemo ? "✓" : "○"} 메모 {hasMemo ? "입력" : "선택"}
+            {imageCount > 0 ? "✓" : "○"} 캡처{" "}
+            {imageCount > 0 ? `${imageCount}장` : "없음"}
           </span>
-        )}
-        {(isMulti || hasMemo || behaviorOk) && (
           <span
-            className="text-xs px-2.5 py-1 rounded-full font-bold flex items-center gap-1"
-            style={{ background: "rgba(254,229,0,0.2)", color: "#856C00" }}
+            className={`text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1 ${
+              relationshipOk
+                ? "bg-green-50 text-green-600"
+                : "bg-white/40 text-gray-400"
+            }`}
           >
-            ✨{" "}
-            {isDeepTab
-              ? "프리미엄"
-              : isMulti && behaviorOk
-                ? "최고 정확도"
-                : "높은 정확도"}
+            {relationshipOk ? "✓" : "○"} 관계
           </span>
-        )}
-      </div>
+          <span
+            className={`text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1 ${
+              behaviorOk
+                ? "bg-green-50 text-green-600"
+                : "bg-white/40 text-gray-400"
+            }`}
+          >
+            {behaviorOk ? "✓" : "○"} 문항 {BEHAVIOR_QUESTIONS.length}
+          </span>
+          {isDeepTab && (
+            <span
+              className={`text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1 ${
+                hasMemo
+                  ? "bg-green-50 text-green-600"
+                  : "bg-white/40 text-gray-400"
+              }`}
+            >
+              {hasMemo ? "✓" : "○"} 메모 {hasMemo ? "입력" : "선택"}
+            </span>
+          )}
+          {(isMulti || hasMemo || behaviorOk) && (
+            <span
+              className="text-xs px-2.5 py-1 rounded-full font-bold flex items-center gap-1"
+              style={{ background: "rgba(254,229,0,0.2)", color: "#856C00" }}
+            >
+              ✨{" "}
+              {isDeepTab
+                ? "프리미엄"
+                : isMulti && behaviorOk
+                  ? "최고 정확도"
+                  : "높은 정확도"}
+            </span>
+          )}
+        </div>
+      )}
+
+      {freePhotoOnly && (
+        <div className="flex items-center gap-2 mb-3 px-1 flex-wrap">
+          <span
+            className={`text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1 ${
+              imageCount > 0
+                ? "bg-orange-50 text-orange-700"
+                : "bg-white/60 text-gray-400"
+            }`}
+          >
+            {imageCount > 0 ? "✓" : "○"} 캡처{" "}
+            {imageCount > 0 ? `${imageCount}장` : "필요"}
+          </span>
+        </div>
+      )}
 
       <button
         onClick={onAnalyze}
@@ -97,12 +119,21 @@ export default function AnalyzeButton({
         style={{
           background:
             canAnalyze && !isLoading
-              ? "linear-gradient(135deg, #FEE500, #FFD000)"
+              ? useWarmCta
+                ? "linear-gradient(135deg, var(--mbti-warm-accent), var(--mbti-warm-accent-dark))"
+                : "linear-gradient(135deg, #FEE500, #FFD000)"
               : "rgba(243,244,246,0.7)",
-          color: canAnalyze && !isLoading ? "#1a1a1a" : "#9CA3AF",
+          color:
+            canAnalyze && !isLoading
+              ? useWarmCta
+                ? "#fff"
+                : "#1a1a1a"
+              : "#9CA3AF",
           boxShadow:
             canAnalyze && !isLoading
-              ? "0 6px 24px rgba(254,229,0,0.5)"
+              ? useWarmCta
+                ? "0 6px 28px rgba(232,120,10,0.25)"
+                : "0 6px 24px rgba(254,229,0,0.5)"
               : "none",
           cursor: canAnalyze && !isLoading ? "pointer" : "not-allowed",
         }}

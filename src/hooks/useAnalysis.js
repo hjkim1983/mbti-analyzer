@@ -30,6 +30,8 @@ function rejectReasonToMessage(err, fallback) {
 
 export default function useAnalysis() {
   const [stage, setStage] = useState("main");
+  /** pickTier: 무료/유료 카드 선택 전 · input: 캡처 입력 플로우 */
+  const [flowPhase, setFlowPhase] = useState("pickTier");
   /** free | premium — UI 탭 (API mode와 동일) */
   const [activeTab, setActiveTabState] = useState("free");
   const [images, setImages] = useState([]);
@@ -67,10 +69,7 @@ export default function useAnalysis() {
       imageCount <= MAX_IMAGES_PREMIUM &&
       relationship !== null &&
       allBehaviorAnswered
-    : imageCount >= 1 &&
-      imageCount <= MAX_IMAGES_FREE &&
-      relationship !== null &&
-      allBehaviorAnswered;
+    : imageCount >= 1 && imageCount <= MAX_IMAGES_FREE;
 
   useEffect(() => {
     (async () => {
@@ -148,6 +147,28 @@ export default function useAnalysis() {
       });
     }
   }, []);
+
+  /** 티어 카드에서 선택 후 입력 단계로 */
+  const enterInputFlow = useCallback((tabId) => {
+    handleTabChange(tabId);
+    setFlowPhase("input");
+  }, [handleTabChange]);
+
+  /** 티어 선택 화면으로 — 폼 초기화 */
+  const backToTierPick = useCallback(() => {
+    setError(null);
+    setGeminiErrorDetail(null);
+    images.forEach((img) => {
+      if (img?.preview) URL.revokeObjectURL(img.preview);
+    });
+    setImages([]);
+    setTargetName("");
+    setMemo("");
+    setRelationship(null);
+    setBehaviorAnswers({});
+    setActiveTabState("free");
+    setFlowPhase("pickTier");
+  }, [images]);
 
   const setBehaviorAnswer = useCallback((questionId, choice) => {
     setBehaviorAnswers((prev) => ({ ...prev, [questionId]: choice }));
@@ -230,8 +251,12 @@ export default function useAnalysis() {
         images: base64Images,
         paymentId,
         mode,
-        relationship: relationship || undefined,
-        behaviorAnswers,
+        ...(mode === ANALYSIS_MODE.FREE
+          ? {}
+          : {
+              relationship: relationship || undefined,
+              behaviorAnswers,
+            }),
       };
 
       if (isDevModeClient()) {
@@ -396,6 +421,7 @@ export default function useAnalysis() {
     setError(null);
     setGeminiErrorDetail(null);
     setActiveTabState("premium");
+    setFlowPhase("input");
   }, []);
 
   const reset = useCallback(() => {
@@ -414,6 +440,7 @@ export default function useAnalysis() {
     setError(null);
     setGeminiErrorDetail(null);
     setActiveTabState("free");
+    setFlowPhase("pickTier");
   }, [images]);
 
   /** 분석 API 호출 중(버튼 중복 클릭 방지): 확인 중 또는 로딩 스테이지 */
@@ -423,6 +450,9 @@ export default function useAnalysis() {
 
   return {
     stage,
+    flowPhase,
+    enterInputFlow,
+    backToTierPick,
     activeTab,
     setActiveTab: handleTabChange,
     images,

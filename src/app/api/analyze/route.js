@@ -160,15 +160,17 @@ export async function POST(request) {
     const relationship = sanitizeRelationship(rawRelationship);
     const behaviorAnswers = sanitizeBehaviorAnswers(rawBehaviorAnswers);
 
-    if (!relationship || !behaviorAnswers) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "INVALID_INPUT",
-          message: "관계 선택과 행동 문항 7개에 모두 답해주세요",
-        },
-        { status: 400 },
-      );
+    if (mode === ANALYSIS_MODE.PREMIUM) {
+      if (!relationship || !behaviorAnswers) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "INVALID_INPUT",
+            message: "관계 선택과 행동 문항 7개에 모두 답해주세요",
+          },
+          { status: 400 },
+        );
+      }
     }
 
     let result;
@@ -178,8 +180,10 @@ export async function POST(request) {
         memo: memoTrim,
         images: imagesForGemini,
         mode,
-        relationship,
-        behaviorAnswers,
+        relationship:
+          mode === ANALYSIS_MODE.FREE ? null : relationship,
+        behaviorAnswers:
+          mode === ANALYSIS_MODE.FREE ? {} : behaviorAnswers,
       });
     } catch (err) {
       const devErr = devMode

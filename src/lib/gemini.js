@@ -72,7 +72,7 @@ function buildFreeSystemPrompt() {
   return `카카오톡 캡처로 MBTI 후보와 축별 근거를 빠르게 추정하는 심리언어학 분석 에이전트입니다.
 
 ## 분석 순서
-1. 말풍선·프로필·맥락 식별 → 2. 관찰 신호 5개 이상 → 3. 맥락(관계·행동 문항 요약) 반영
+1. 말풍선·프로필 식별 → 2. 관찰 신호 5개 이상 → 3. (제공된 경우에만) 관계·행동 문항 요약을 보조 맥락으로 반영
 4. 4축 각각 찬성·반대 근거 → 5. 후보 MBTI 3개(순위별 confidence 포함) → 6. analysisExplanation(순위 선정 이유+한계) → 7. 한계·오판 요인
 
 ## 규칙
@@ -220,8 +220,9 @@ function buildFreeUserParts({
       `## 분석 대상\n이름: ${targetName || "미지정"}\n\n` +
       `무료 빠른 추정: 캡처 이미지로 MBTI 방향과 짧은 요약만 제공합니다.\n\n` +
       `이미지에서 대화와 프로필을 구분해 참고하세요.` +
-      buildContextHint(relationship) +
-      behaviorBlock,
+      (relationship || behaviorBlock
+        ? buildContextHint(relationship) + behaviorBlock
+        : "\n\n(관계·행동 문항 없음 — **캡처 텍스트·말투만**으로 추정하세요. 신뢰도는 보수적으로 잡고 한계를 분명히 적으세요.)"),
   });
 
   for (const img of images) {

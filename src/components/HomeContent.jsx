@@ -2,16 +2,12 @@
 
 import { useRef, useCallback } from "react";
 import Header from "@/components/Header";
-import HeroSection from "@/components/HeroSection";
-import UploadCard from "@/components/UploadCard";
-import MemoCard from "@/components/MemoCard";
-import RelationshipSelect from "@/components/RelationshipSelect";
-import BehaviorQuestions from "@/components/BehaviorQuestions";
-import AnalyzeButton from "@/components/AnalyzeButton";
+import TierPickScreen from "@/components/TierPickScreen";
+import FreeInputPanel from "@/components/FreeInputPanel";
+import PremiumInputWizard from "@/components/PremiumInputWizard";
 import PaymentModal from "@/components/PaymentModal";
 import LoadingScreen from "@/components/LoadingScreen";
 import ResultScreen from "@/components/ResultScreen";
-import AnalysisTabs from "@/components/ui/Tabs";
 import useAnalysis from "@/hooks/useAnalysis";
 import usePayment from "@/hooks/usePayment";
 import { getDeviceId } from "@/lib/device-id";
@@ -19,7 +15,6 @@ import {
   FREE_LIMIT,
   MAX_IMAGES_FREE,
   MAX_IMAGES_PREMIUM,
-  MAX_IMAGES_SENT_PREMIUM,
   ANALYSIS_MODE,
   normalizeAnalysisMode,
 } from "@/lib/analysis-tier";
@@ -270,23 +265,45 @@ export default function HomeContent() {
     : analysis.imageCount >= 1 && analysis.imageCount <= MAX_IMAGES_FREE;
 
   const analyzeFormHint =
-    analysis.stage === "main" &&
+    (analysis.stage === "main" || analysis.stage === "payment") &&
     !analysis.isAnalysisBusy &&
-    tierImagesOk &&
-    !analysis.canAnalyze &&
-    (!analysis.relationship || !analysis.allBehaviorAnswered)
-      ? "관계 선택과 7개 문항에 모두 답해주세요"
+    !analysis.canAnalyze
+      ? analysis.isDeepTab
+        ? tierImagesOk &&
+            (!analysis.relationship || !analysis.allBehaviorAnswered)
+          ? "관계 선택과 7개 문항에 모두 답해주세요"
+          : !tierImagesOk
+            ? `캡처를 1~${MAX_IMAGES_PREMIUM}장 올려주세요`
+            : null
+        : analysis.imageCount < 1
+          ? "캡처를 1장 이상 올려주세요"
+          : analysis.imageCount > MAX_IMAGES_FREE
+            ? `무료는 최대 ${MAX_IMAGES_FREE}장까지예요`
+            : null
       : null;
+
+  /** 결제 모달 중에도 프리미엄 마법사·무료 패널 언마운트 방지 */
+  const showInputFlow =
+    analysis.flowPhase === "input" &&
+    (analysis.stage === "main" || analysis.stage === "payment");
+
+  const useWarmShell =
+    analysis.stage === "main" ||
+    (analysis.stage === "payment" && analysis.flowPhase === "input");
 
   const loadingMode = analysis.isDeepTab
     ? ANALYSIS_MODE.PREMIUM
     : ANALYSIS_MODE.FREE;
 
   return (
-    <div className="min-h-screen">
+    <div
+      className={
+        useWarmShell ? "min-h-screen mbti-warm-shell" : "min-h-screen"
+      }
+    >
       <Header freeRemaining={freeRemaining} />
 
-      <main className="max-w-lg mx-auto px-4 pb-24">
+      <main className="max-w-lg mx-auto px-4 pb-24 relative">
         {isDevModeClient() && (
           <div
             className="mt-3 rounded-xl border border-amber-400/60 bg-amber-50/90 px-3 py-2 text-center text-[11px] text-amber-900"
@@ -334,59 +351,60 @@ export default function HomeContent() {
           </div>
         )}
 
-        {analysis.stage === "main" && (
-          <div ref={formTopRef}>
-            <HeroSection />
-
-            <AnalysisTabs
-              value={analysis.activeTab}
-              onChange={analysis.setActiveTab}
-              simpleRemaining={freeRemaining}
+        {analysis.stage === "main" &&
+          analysis.flowPhase === "pickTier" && (
+            <TierPickScreen
+              onPickFree={() => analysis.enterInputFlow("free")}
+              onPickPremium={() => analysis.enterInputFlow("premium")}
+              freeRemaining={freeRemaining}
             />
+          )}
 
-            <UploadCard
+        {showInputFlow && analysis.isDeepTab && (
+          <div ref={formTopRef}>
+            <PremiumInputWizard
+              onBackToTier={analysis.backToTierPick}
+              images={analysis.images}
+              targetName={analysis.targetName}
+              memo={analysis.memo}
+              relationship={analysis.relationship}
+              behaviorAnswers={analysis.behaviorAnswers}
+              onAddImages={analysis.addImages}
+              onRemoveImage={analysis.removeImage}
+              onTargetNameChange={analysis.setTargetName}
+              onMemoChange={analysis.setMemo}
+              onRelationshipChange={analysis.setRelationship}
+              onBehaviorAnswer={analysis.setBehaviorAnswer}
+              maxImages={analysis.maxImages}
+              requestAnalysis={analysis.requestAnalysis}
+              canAnalyze={analysis.canAnalyze}
+              isAnalysisBusy={analysis.isAnalysisBusy}
+              freeCount={analysis.freeCount}
+              isMulti={analysis.isMulti}
+              hasMemo={analysis.hasMemo}
+              imageCount={analysis.imageCount}
+              allBehaviorAnswered={analysis.allBehaviorAnswered}
+              formIncompleteHint={analyzeFormHint}
+            />
+          </div>
+        )}
+
+        {showInputFlow && !analysis.isDeepTab && (
+          <div ref={formTopRef}>
+            <FreeInputPanel
+              onBackToTier={analysis.backToTierPick}
               images={analysis.images}
               targetName={analysis.targetName}
               onAddImages={analysis.addImages}
               onRemoveImage={analysis.removeImage}
               onTargetNameChange={analysis.setTargetName}
               maxImages={analysis.maxImages}
-              tierHint={
-                analysis.isDeepTab
-                  ? `메모 선택 · 분석 전송 최대 ${MAX_IMAGES_SENT_PREMIUM}장(대표 샘플)`
-                  : "추가 텍스트 없이 빠르게"
-              }
-            />
-
-            <RelationshipSelect
-              value={analysis.relationship}
-              onChange={analysis.setRelationship}
-            />
-
-            <BehaviorQuestions
-              relationship={analysis.relationship}
-              answers={analysis.behaviorAnswers}
-              onAnswer={analysis.setBehaviorAnswer}
-            />
-
-            <MemoCard
-              memo={analysis.memo}
-              onMemoChange={analysis.setMemo}
-              isDeep={analysis.isDeepTab}
-            />
-
-            <AnalyzeButton
+              requestAnalysis={analysis.requestAnalysis}
               canAnalyze={analysis.canAnalyze}
+              isAnalysisBusy={analysis.isAnalysisBusy}
               freeCount={analysis.freeCount}
               isMulti={analysis.isMulti}
-              hasMemo={analysis.hasMemo}
-              imageCount={analysis.images.length}
-              onAnalyze={analysis.requestAnalysis}
-              isLoading={analysis.isAnalysisBusy}
-              isDeepTab={analysis.isDeepTab}
-              memoLength={analysis.memo.trim().length}
-              relationshipOk={Boolean(analysis.relationship)}
-              behaviorOk={analysis.allBehaviorAnswered}
+              imageCount={analysis.imageCount}
               formIncompleteHint={analyzeFormHint}
             />
           </div>
