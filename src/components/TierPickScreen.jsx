@@ -53,16 +53,17 @@ export default function TierPickScreen({
       </div>
 
       <div className="flex flex-col gap-4 max-w-md mx-auto">
+        {/* 동일 min-height + 푸터 슬롯으로 두 카드 높이 맞춤 */}
         <button
           type="button"
           onClick={onPickFree}
-          className="mbti-warm-card text-left p-5 rounded-[1.125rem] transition-all duration-200 active:scale-[0.99] hover:shadow-md border border-orange-200/30 hover:border-orange-300/50"
+          className="mbti-warm-card text-left p-5 rounded-[1.125rem] transition-all duration-200 active:scale-[0.99] hover:shadow-md border border-orange-200/30 hover:border-orange-300/50 min-h-[13.5rem] flex flex-col"
         >
-          <div className="flex items-start gap-4">
+          <div className="flex gap-4 flex-1 items-stretch min-h-0">
             <span className="text-3xl shrink-0" aria-hidden>
               {REL_ICONS.free}
             </span>
-            <div className="min-w-0">
+            <div className="min-w-0 flex flex-col flex-1">
               <p
                 className="font-bold text-base mb-1"
                 style={{ color: "var(--mbti-warm-text)" }}
@@ -70,21 +71,23 @@ export default function TierPickScreen({
                 빠른 추정 (무료)
               </p>
               <p
-                className="text-xs leading-relaxed mb-2"
+                className="text-xs leading-relaxed flex-1"
                 style={{ color: "var(--mbti-warm-text-body)" }}
               >
                 캡처 이미지만으로 MBTI 방향을 빠르게 추정해요. 관계·문항 입력은
                 없어요.
               </p>
-              <span
-                className="inline-block text-[11px] font-bold px-2.5 py-1 rounded-full"
-                style={{
-                  background: "rgba(232,120,10,0.1)",
-                  color: "var(--mbti-warm-accent)",
-                }}
-              >
-                남은 무료 {remaining}회 / 전체 {FREE_LIMIT}회
-              </span>
+              <div className="mt-2 min-h-[1.75rem] flex items-end">
+                <span
+                  className="inline-block text-[11px] font-bold px-2.5 py-1 rounded-full"
+                  style={{
+                    background: "rgba(232,120,10,0.1)",
+                    color: "var(--mbti-warm-accent)",
+                  }}
+                >
+                  남은 무료 {remaining}회 / 전체 {FREE_LIMIT}회
+                </span>
+              </div>
             </div>
           </div>
         </button>
@@ -92,16 +95,16 @@ export default function TierPickScreen({
         <button
           type="button"
           onClick={onPickPremium}
-          className="mbti-warm-card text-left p-5 rounded-[1.125rem] transition-all duration-200 active:scale-[0.99] hover:shadow-md border-2 border-orange-300/40 hover:border-orange-400/60"
+          className="mbti-warm-card text-left p-5 rounded-[1.125rem] transition-all duration-200 active:scale-[0.99] hover:shadow-md border-2 border-orange-300/40 hover:border-orange-400/60 min-h-[13.5rem] flex flex-col"
           style={{
             boxShadow: "0 4px 20px rgba(232,120,10,0.12)",
           }}
         >
-          <div className="flex items-start gap-4">
+          <div className="flex gap-4 flex-1 items-stretch min-h-0">
             <span className="text-3xl shrink-0" aria-hidden>
               {REL_ICONS.premium}
             </span>
-            <div className="min-w-0">
+            <div className="min-w-0 flex flex-col flex-1">
               <p
                 className="font-bold text-base mb-1"
                 style={{ color: "var(--mbti-warm-text)" }}
@@ -109,12 +112,23 @@ export default function TierPickScreen({
                 심층 리포트 (프리미엄)
               </p>
               <p
-                className="text-xs leading-relaxed"
+                className="text-xs leading-relaxed flex-1"
                 style={{ color: "var(--mbti-warm-text-body)" }}
               >
-                캡처 → 관계 → 관찰 문항 → 메모 순으로 진행하고, 결제 후 풀
-                리포트를 받아요.
+                캡처 → 관계 → 관찰 문항 → 특징 선택 순으로 진행하고, 결제 후
+                풀 리포트를 받아요.
               </p>
+              <div className="mt-2 min-h-[1.75rem] flex items-end">
+                <span
+                  className="inline-block text-[11px] font-bold px-2.5 py-1 rounded-full"
+                  style={{
+                    background: "rgba(232,120,10,0.08)",
+                    color: "var(--mbti-warm-text-body)",
+                  }}
+                >
+                  결제 후 풀 리포트
+                </span>
+              </div>
             </div>
           </div>
         </button>
