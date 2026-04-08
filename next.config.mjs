@@ -16,16 +16,21 @@ const nextConfig = {
    * 배포 환경(Vercel 대시보드 등)에서 별도 CSP를 쓰는 경우, 정책이 **교차(AND)** 되면
    * 여전히 차단될 수 있으니 프리뷰/로컬용으로 script-src에 'unsafe-eval'을 넣거나
    * 개발 호스트에서는 CSP를 끄는 것을 검토하세요.
+   *
+   * @portone/browser-sdk 는 `https://cdn.portone.io/v2/browser-sdk.js` 를 주입하므로
+   * script-src 에 cdn.portone.io 가 없으면 [PortOne] Failed to load window.PortOne 이 납니다.
+   * PG 결제창 iframe 은 frame-src https: 로 허용(개발 전용).
    */
   async headers() {
     if (!isDev) return [];
     const devCsp = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline' blob:",
-      "style-src 'self' 'unsafe-inline'",
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline' blob: https://cdn.portone.io",
+      "style-src 'self' 'unsafe-inline' https://cdn.portone.io",
       "img-src 'self' data: blob: https:",
-      "font-src 'self' data:",
+      "font-src 'self' data: https://cdn.portone.io",
       "connect-src 'self' https: http: ws: wss:",
+      "frame-src 'self' https: data:",
       "frame-ancestors 'self'",
       "base-uri 'self'",
     ].join("; ");
