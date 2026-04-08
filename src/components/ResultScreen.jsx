@@ -39,6 +39,70 @@ const AXIS_COMPACT_TITLE = {
 const ACCORDION_MAX_H = 9999;
 const ACCORDION_EASE = "cubic-bezier(0.4, 0, 0.2, 1)";
 
+/** 찬성 근거 문자열에 (반대) 라벨이 붙은 경우 — 반대·예외 쪽으로 분류 */
+function hasOppositionMarker(text) {
+  return String(text).includes("(반대)");
+}
+
+/** UI 표시용: ✅·(반대)·굵게 표기 등만 정리 (본문은 유지) */
+function stripOppositionMarker(text) {
+  let s = String(text).trim();
+  s = s.replace(/^[\s✅✔√•·]+/u, "");
+  s = s.replace(/^\*{0,2}\s*\(반대\)\s*\*{0,2}\s*/u, "");
+  s = s.replace(/^\(반대\)\s*/u, "");
+  s = s.replace(/\*{2,}/g, "");
+  s = s.replace(/\s+/g, " ").trim();
+  return s || String(text).trim();
+}
+
+function normalizeEvidenceKey(t) {
+  return String(t)
+    .replace(/\*{2,}/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * API가 찬성 배열에 (반대) 문장을 넣은 경우 분리 후 반대 목록과 합침.
+ * 동일 문장이 양쪽에 있으면 한 번만 표시.
+ */
+function partitionAxisEvidence(forEvidence, againstEvidence) {
+  const forRaw = Array.isArray(forEvidence) ? forEvidence : [];
+  const againstRaw = Array.isArray(againstEvidence) ? againstEvidence : [];
+  const forDisplay = [];
+  const pulledAgainst = [];
+
+  for (const item of forRaw) {
+    if (hasOppositionMarker(item)) {
+      pulledAgainst.push(stripOppositionMarker(item));
+    } else {
+      forDisplay.push(item);
+    }
+  }
+
+  const seen = new Set();
+  const againstDisplay = [];
+
+  for (const t of pulledAgainst) {
+    const key = normalizeEvidenceKey(t);
+    if (!key) continue;
+    if (!seen.has(key)) {
+      seen.add(key);
+      againstDisplay.push(t);
+    }
+  }
+  for (const t of againstRaw) {
+    const key = normalizeEvidenceKey(t);
+    if (!key) continue;
+    if (!seen.has(key)) {
+      seen.add(key);
+      againstDisplay.push(t);
+    }
+  }
+
+  return { forDisplay, againstDisplay };
+}
+
 function ClickBadge() {
   return (
     <span
@@ -427,6 +491,10 @@ export default function ResultScreen({
                 const againstList = Array.isArray(ax.againstEvidence)
                   ? ax.againstEvidence
                   : [];
+                const { forDisplay, againstDisplay } = partitionAxisEvidence(
+                  forList,
+                  againstList,
+                );
                 const open = !!axisExpanded[key];
                 const panelId = `axis-panel-${key}`;
                 const compactTitle =
@@ -519,13 +587,13 @@ export default function ResultScreen({
                               {conf}%
                             </span>
                           </p>
-                          {forList.length > 0 && (
+                          {forDisplay.length > 0 && (
                             <div className="mb-5 last:mb-0">
                               <p className="mb-2.5 text-xs font-extrabold tracking-wide text-emerald-800">
                                 찬성 근거
                               </p>
                               <ul className="space-y-3">
-                                {forList.map((t, i) => (
+                                {forDisplay.map((t, i) => (
                                   <li
                                     key={i}
                                     className="acc-stagger-in"
@@ -556,18 +624,18 @@ export default function ResultScreen({
                               </ul>
                             </div>
                           )}
-                          {againstList.length > 0 && (
+                          {againstDisplay.length > 0 && (
                             <div>
                               <p className="mb-2.5 text-xs font-extrabold tracking-wide text-amber-950">
                                 반대·예외 근거
                               </p>
                               <ul className="space-y-3">
-                                {againstList.map((t, i) => (
+                                {againstDisplay.map((t, i) => (
                                   <li
                                     key={i}
                                     className="acc-stagger-in"
                                     style={{
-                                      "--stagger-delay": `${(forList.length + i) * 90}ms`,
+                                      "--stagger-delay": `${(forDisplay.length + i) * 90}ms`,
                                     }}
                                   >
                                     <div
