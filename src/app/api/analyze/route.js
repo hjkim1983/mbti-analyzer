@@ -17,6 +17,29 @@ import {
 import { selectImagesForApi } from "@/lib/analysis-images";
 import { normalizeGeminiAnalysisResult } from "@/lib/analysis-result-normalize";
 import { sanitizeBehaviorAnswers } from "@/lib/behavior-answers-sanitize";
+import {
+  isDevModeServer,
+  summarizeAnalyzeBodyForLog,
+} from "@/lib/dev-mode";
+
+/** DEV_MODE 시 Gemini·기타 오류를 화면에 넘길 직렬화 가능 객체 */
+function serializeDevGeminiError(err) {
+  if (!err) return null;
+  const o =
+    typeof err === "object"
+      ? err
+      : { message: String(err), name: "Error" };
+  return {
+    name: o.name,
+    message: o.message,
+    stack: o.stack,
+    status: o.status,
+    rawJson: o.rawJson ?? undefined,
+    rawBody: o.rawBody ?? undefined,
+    rawPreview: o.rawPreview ?? undefined,
+    finishReason: o.finishReason ?? undefined,
+  };
+}
 
 const RELATIONSHIP_ALLOWED = new Set([
   "friend",
@@ -37,6 +60,8 @@ function sanitizeRelationship(v) {
 export const maxDuration = 60;
 
 export async function POST(request) {
+  const devMode = isDevModeServer();
+
   try {
     const body = await request.json();
     const {
@@ -49,6 +74,13 @@ export async function POST(request) {
       relationship: rawRelationship,
       behaviorAnswers: rawBehaviorAnswers,
     } = body;
+
+    if (devMode) {
+      console.log(
+        "[DEV_MODE] /api/analyze 요청",
+        JSON.stringify(summarizeAnalyzeBodyForLog(body), null, 2),
+      );
+    }
 
     const mode = normalizeAnalysisMode(rawMode);
 
@@ -107,7 +139,7 @@ export async function POST(request) {
     }
 
     const needPay = requiresPayment(mode, count);
-    if (needPay && !paymentId) {
+    if (needPay && !paymentId && !devMode) {
       return NextResponse.json(
         {
           success: false,
@@ -122,7 +154,8 @@ export async function POST(request) {
       );
     }
 
-    const isPaid = needPay;
+    /** devMode 에서 결제 생략 시 유료 분석으로 기록하지 않음 */
+    const isPaid = needPay && Boolean(paymentId) && !devMode;
 
     const relationship = sanitizeRelationship(rawRelationship);
     const behaviorAnswers = sanitizeBehaviorAnswers(rawBehaviorAnswers);
@@ -149,36 +182,48 @@ export async function POST(request) {
         behaviorAnswers,
       });
     } catch (err) {
+      const devErr = devMode
+        ? { devGeminiError: serializeDevGeminiError(err) }
+        : {};
       if (err.message === "ANALYSIS_TIMEOUT") {
-        return NextResponse.json(
-          {
-            success: false,
-            error: "ANALYSIS_TIMEOUT",
-            message: "분석 시간이 초과되었습니다. 다시 시도해주세요.",
-          },
-          { status: 504 },
-        );
+        const payload = {
+          success: false,
+          error: "ANALYSIS_TIMEOUT",
+          message: "분석 시간이 초과되었습니다. 다시 시도해주세요.",
+          ...devErr,
+        };
+        if (devMode) {
+          console.log("[DEV_MODE] /api/analyze 응답", JSON.stringify(payload, null, 2));
+        }
+        return NextResponse.json(payload, { status: 504 });
       }
       if (err.message === "QUOTA_EXCEEDED") {
-        return NextResponse.json(
-          {
-            success: false,
-            error: "QUOTA_EXCEEDED",
-            message:
-              "AI 서버 요청 한도를 초과했습니다. 1분 후 다시 시도해주세요.",
-          },
-          { status: 429 },
-        );
+        const payload = {
+          success: false,
+          error: "QUOTA_EXCEEDED",
+          message:
+            "AI 서버 요청 한도를 초과했습니다. 1분 후 다시 시도해주세요.",
+          ...devErr,
+        };
+        if (devMode) {
+          console.log("[DEV_MODE] /api/analyze 응답", JSON.stringify(payload, null, 2));
+        }
+        return NextResponse.json(payload, { status: 429 });
       }
       console.error("Gemini 분석 오류:", err);
-      return NextResponse.json(
-        {
-          success: false,
-          error: "ANALYSIS_FAILED",
-          message: "AI 분석 중 오류가 발생했습니다.",
-        },
-        { status: 500 },
-      );
+      const failPayload = {
+        success: false,
+        error: "ANALYSIS_FAILED",
+        message: "AI 분석 중 오류가 발생했습니다.",
+        ...devErr,
+      };
+      if (devMode) {
+        console.log(
+          "[DEV_MODE] /api/analyze 응답",
+          JSON.stringify(failPayload, null, 2),
+        );
+      }
+      return NextResponse.json(failPayload, { status: 500 });
     }
 
     result = normalizeGeminiAnalysisResult(result, { mode });
@@ -199,7 +244,7 @@ export async function POST(request) {
 
     const meta = getMbtiMeta(result.mbtiType);
 
-    return NextResponse.json({
+    const okPayload = {
       success: true,
       data: {
         analysisId,
@@ -213,7 +258,14 @@ export async function POST(request) {
         used: newCount,
         remaining: Math.max(0, FREE_LIMIT - newCount),
       },
-    });
+    };
+    if (devMode) {
+      console.log(
+        "[DEV_MODE] /api/analyze 응답",
+        JSON.stringify(okPayload, null, 2),
+      );
+    }
+    return NextResponse.json(okPayload);
   } catch (err) {
     console.error("분석 API 오류:", err);
     return NextResponse.json(

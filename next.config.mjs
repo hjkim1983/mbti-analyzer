@@ -1,7 +1,13 @@
 /** @type {import('next').NextConfig} */
 const isDev = process.env.NODE_ENV === "development";
+/** .env DEV_MODE=true + next dev 일 때만 클라이언트에 노출(결제 스킵 UI) */
+const nextPublicDevMode =
+  isDev && process.env.DEV_MODE === "true" ? "true" : "";
 
 const nextConfig = {
+  env: {
+    NEXT_PUBLIC_DEV_MODE: nextPublicDevMode,
+  },
   /**
    * 브라우저 기본 요청 `/favicon.ico`가 404가 나지 않도록 SVG 파비콘으로 연결합니다.
    */

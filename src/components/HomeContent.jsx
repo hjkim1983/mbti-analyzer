@@ -25,6 +25,7 @@ import {
 } from "@/lib/analysis-tier";
 import { softenOverallConfidenceForDisplay } from "@/lib/result-confidence";
 import { sanitizeAlternativeTypes } from "@/lib/alternative-types-sanitize";
+import { isDevModeClient } from "@/lib/dev-mode";
 
 export default function HomeContent() {
   const analysis = useAnalysis();
@@ -286,6 +287,35 @@ export default function HomeContent() {
       <Header freeRemaining={freeRemaining} />
 
       <main className="max-w-lg mx-auto px-4 pb-24">
+        {isDevModeClient() && (
+          <div
+            className="mt-3 rounded-xl border border-amber-400/60 bg-amber-50/90 px-3 py-2 text-center text-[11px] text-amber-900"
+            role="status"
+          >
+            <strong>DEV_MODE</strong>: 결제 단계 생략 · 브라우저 콘솔에 API 요청/응답 로그
+            · Gemini 오류 시 아래에 JSON 표시
+          </div>
+        )}
+
+        {analysis.geminiErrorDetail &&
+          (analysis.stage === "main" || analysis.stage === "payment") && (
+            <div className="mt-3 rounded-2xl border border-red-200 bg-red-50/95 p-3 text-left">
+              <p className="text-xs font-bold text-red-700 mb-2">
+                Gemini / 분석 오류 상세 (DEV_MODE)
+              </p>
+              <pre className="text-[10px] leading-snug text-red-900 whitespace-pre-wrap break-all max-h-64 overflow-y-auto font-mono bg-white/80 rounded-lg p-2 border border-red-100">
+                {JSON.stringify(analysis.geminiErrorDetail, null, 2)}
+              </pre>
+              <button
+                type="button"
+                onClick={() => analysis.clearGeminiErrorDetail()}
+                className="text-xs text-red-600 mt-2 underline"
+              >
+                상세 닫기
+              </button>
+            </div>
+          )}
+
         {(analysis.error || payment.error) &&
           (analysis.stage === "main" || analysis.stage === "payment") && (
           <div className="mt-4 glass-highlight rounded-2xl p-3 text-center">

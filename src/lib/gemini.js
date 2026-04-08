@@ -329,9 +329,27 @@ async function postGemini(body) {
     if (!res.ok) {
       const errText = await res.text();
       if (res.status === 429 || errText.includes("RESOURCE_EXHAUSTED")) {
-        throw new Error("QUOTA_EXCEEDED");
+        const qe = new Error("QUOTA_EXCEEDED");
+        qe.status = res.status;
+        qe.rawBody = errText;
+        try {
+          qe.rawJson = JSON.parse(errText);
+        } catch {
+          qe.rawJson = null;
+        }
+        throw qe;
       }
-      throw new Error(`Gemini API 오류 (${res.status}): ${errText}`);
+      const err = new Error(
+        `Gemini API 오류 (${res.status}): ${errText.slice(0, 800)}`,
+      );
+      err.status = res.status;
+      err.rawBody = errText;
+      try {
+        err.rawJson = JSON.parse(errText);
+      } catch {
+        err.rawJson = null;
+      }
+      throw err;
     }
 
     const data = await res.json();
@@ -347,27 +365,39 @@ async function postGemini(body) {
     if (!text) {
       const block = data.promptFeedback?.blockReason;
       if (block) {
-        throw new Error(`Gemini 응답이 차단되었습니다: ${block}`);
+        const e = new Error(`Gemini 응답이 차단되었습니다: ${block}`);
+        e.rawJson = data;
+        throw e;
       }
       if (finishReason === "MAX_TOKENS") {
-        throw new Error(
+        const e = new Error(
           "응답이 너무 길어 잘렸습니다. 이미지 수를 줄이거나 다시 시도해주세요.",
         );
+        e.rawJson = data;
+        throw e;
       }
-      throw new Error("Gemini 응답이 비어있습니다.");
+      const e = new Error("Gemini 응답이 비어있습니다.");
+      e.rawJson = data;
+      throw e;
     }
 
     const parsed = parseGeminiAnalysisJson(text);
     if (parsed) return parsed;
 
     if (finishReason === "MAX_TOKENS") {
-      throw new Error(
+      const e = new Error(
         "응답이 잘려 JSON이 완성되지 않았습니다. 이미지를 줄이거나 다시 시도해주세요.",
       );
+      e.rawPreview = text.slice(0, 4000);
+      e.finishReason = finishReason;
+      throw e;
     }
 
     console.error("Gemini JSON 파싱 실패 (앞 600자):", text.slice(0, 600));
-    throw new Error("AI 응답을 파싱할 수 없습니다. 다시 시도해주세요.");
+    const pe = new Error("AI 응답을 파싱할 수 없습니다. 다시 시도해주세요.");
+    pe.rawPreview = text.slice(0, 4000);
+    pe.finishReason = finishReason;
+    throw pe;
   } catch (err) {
     clearTimeout(timeout);
     if (err.name === "AbortError") {

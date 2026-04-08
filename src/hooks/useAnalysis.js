@@ -14,6 +14,10 @@ import {
   ANALYSIS_MODE,
 } from "@/lib/analysis-tier";
 import { BEHAVIOR_QUESTIONS } from "@/constants/behavior-questions";
+import {
+  isDevModeClient,
+  summarizeAnalyzeBodyForLog,
+} from "@/lib/dev-mode";
 
 export default function useAnalysis() {
   const [stage, setStage] = useState("main");
@@ -29,6 +33,8 @@ export default function useAnalysis() {
   const [result, setResult] = useState(null);
   const [freeCount, setFreeCount] = useState(null);
   const [error, setError] = useState(null);
+  /** DEV_MODE: 서버가 내려준 Gemini/분석 오류 상세(JSON 표시용) */
+  const [geminiErrorDetail, setGeminiErrorDetail] = useState(null);
   const [isChecking, setIsChecking] = useState(false);
   const timerRef = useRef(null);
 
@@ -206,24 +212,45 @@ export default function useAnalysis() {
         }),
       );
 
+      const payload = {
+        deviceId,
+        targetName: targetName || "미지정",
+        memo: mode === ANALYSIS_MODE.FREE ? "" : memo,
+        images: base64Images,
+        paymentId,
+        mode,
+        relationship: relationship || undefined,
+        behaviorAnswers,
+      };
+
+      if (isDevModeClient()) {
+        console.log(
+          "[DEV_MODE] /api/analyze 요청(클라이언트)",
+          JSON.stringify(summarizeAnalyzeBodyForLog(payload), null, 2),
+        );
+      }
+
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          deviceId,
-          targetName: targetName || "미지정",
-          memo: mode === ANALYSIS_MODE.FREE ? "" : memo,
-          images: base64Images,
-          paymentId,
-          mode,
-          relationship: relationship || undefined,
-          behaviorAnswers,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
 
+      if (isDevModeClient()) {
+        console.log(
+          "[DEV_MODE] /api/analyze 응답(클라이언트)",
+          JSON.stringify(data, null, 2),
+        );
+      }
+
       if (!data.success) {
+        if (isDevModeClient() && data.devGeminiError) {
+          setGeminiErrorDetail(data.devGeminiError);
+        } else {
+          setGeminiErrorDetail(null);
+        }
         if (data.error === "PAYMENT_REQUIRED") {
           setFreeCount(data.freeCount);
           throw new Error("PAYMENT_REQUIRED");
@@ -231,6 +258,7 @@ export default function useAnalysis() {
         throw new Error(data.message || "분석에 실패했습니다");
       }
 
+      setGeminiErrorDetail(null);
       return data;
     },
     [images, targetName, memo, isPremiumTab, relationship, behaviorAnswers],
@@ -241,16 +269,54 @@ export default function useAnalysis() {
     // 로딩 중 중복 요청 방지: 병렬 호출 시 나중에 실패한 요청이 setStage("main")으로 성공 화면을 덮어쓸 수 있음
     if (stage === "loading") return;
     setError(null);
+    setGeminiErrorDetail(null);
 
     const mode = isPremiumTab ? ANALYSIS_MODE.PREMIUM : ANALYSIS_MODE.FREE;
 
     if (mode === ANALYSIS_MODE.PREMIUM) {
+      if (isDevModeClient()) {
+        setIsChecking(true);
+        try {
+          startLoading(callAnalyzeApi(null, ANALYSIS_MODE.PREMIUM));
+        } catch (err) {
+          setError(err.message);
+          setStage("main");
+        } finally {
+          setIsChecking(false);
+        }
+        return;
+      }
       setStage("payment");
       return;
     }
 
     const used = freeCount?.used ?? 0;
     if (used >= FREE_LIMIT) {
+      if (isDevModeClient()) {
+        setIsChecking(true);
+        try {
+          startLoading(
+            callAnalyzeApi(null, ANALYSIS_MODE.FREE).catch((err) => {
+              if (err.message === "PAYMENT_REQUIRED") {
+                clearInterval(timerRef.current);
+                setActiveTabState("premium");
+                setStage("payment");
+                setError(
+                  "무료 횟수가 부족해요. 프리미엄 탭에서 결제 후 진행해 주세요.",
+                );
+                return null;
+              }
+              throw err;
+            }),
+          );
+        } catch (err) {
+          setError(err.message);
+          setStage("main");
+        } finally {
+          setIsChecking(false);
+        }
+        return;
+      }
       setError(
         "무료 빠른 추정 3회를 모두 사용했어요. 프리미엄 리포트를 위해 결제를 진행해 주세요.",
       );
@@ -291,6 +357,7 @@ export default function useAnalysis() {
       if (!paymentId) return;
 
       setError(null);
+      setGeminiErrorDetail(null);
       const apiPromise = callAnalyzeApi(paymentId, ANALYSIS_MODE.PREMIUM);
       startLoading(apiPromise);
     },
@@ -300,6 +367,7 @@ export default function useAnalysis() {
   const onPaymentCancel = useCallback(() => {
     setStage("main");
     setError(null);
+    setGeminiErrorDetail(null);
   }, []);
 
   /** Free 결과 → 프리미엄 탭으로 (이미지·이름 유지) */
@@ -309,6 +377,7 @@ export default function useAnalysis() {
     setLoadingStep(0);
     setResult(null);
     setError(null);
+    setGeminiErrorDetail(null);
     setActiveTabState("premium");
   }, []);
 
@@ -326,11 +395,14 @@ export default function useAnalysis() {
     setRelationship(null);
     setBehaviorAnswers({});
     setError(null);
+    setGeminiErrorDetail(null);
     setActiveTabState("free");
   }, [images]);
 
   /** 분석 API 호출 중(버튼 중복 클릭 방지): 확인 중 또는 로딩 스테이지 */
   const isAnalysisBusy = isChecking || stage === "loading";
+
+  const clearGeminiErrorDetail = useCallback(() => setGeminiErrorDetail(null), []);
 
   return {
     stage,
@@ -348,6 +420,7 @@ export default function useAnalysis() {
     result,
     freeCount,
     error,
+    geminiErrorDetail,
     isChecking,
     isAnalysisBusy,
     imageCount,
@@ -369,5 +442,6 @@ export default function useAnalysis() {
     switchToPremiumTab,
     reset,
     setError,
+    clearGeminiErrorDetail,
   };
 }
