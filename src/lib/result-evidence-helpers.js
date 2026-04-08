@@ -151,7 +151,7 @@ export function legacyIndicatorsToAxisAnalysis(indicators) {
     const bNote = ind.boundaryNote ? String(ind.boundaryNote).trim() : "";
     const combinedFor = [
       ...(interp ? [interp] : []),
-      ...ev.filter(Boolean).slice(0, 4),
+      ...ev.filter(Boolean).slice(0, 6),
     ];
     const dedupedFor = dedupeOverlappingEvidenceLines(combinedFor);
     const forEvidence = dedupedFor.length ? dedupedFor : ["(세부 근거 없음)"];

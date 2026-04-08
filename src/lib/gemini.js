@@ -123,7 +123,7 @@ ${skill}
 ## 핵심 규칙
 - 한 가지 MBTI만 확정하지 말고 후보 2~3개를 제시한다.
 - 각 축마다 찬성·반대 근거를 **항목당 한 문장** 수준으로 간결히 적는다(장문 인용 금지).
-- **axisAnalysis.forEvidence / againstEvidence**: 배열의 **각 문자열은 서로 다른 근거 한 가지**만 담는다. 첫 항목에 여러 근거를 한꺼번에 합친 뒤, 뒤 항목에 같은 인용·같은 관찰 메모 문장을 반복하지 않는다(중복·요약+나열 이중 작성 금지).
+- **axisAnalysis.forEvidence / againstEvidence**: forEvidence는 **축마다 3개**를 채우는 것을 목표로 한다(대화·프로필·메모·행동문항에서 **서로 다른** 신호 각각 1문장). 데이터가 극히 적을 때만 2개 이하. againstEvidence는 축마다 **1~2개**(반대·예외 신호). 배열 항목끼리 **내용 중복 금지**(합친 요약 뒤 같은 문장 반복 금지).
 - 프로필 이미지는 보조 신호로만 쓴다.
 - 관찰자 메모가 인상 평가 위주면 가중치를 낮춘다고 boundaryNote에 적는다.
 - 업무 맥락에서는 T/F·J/P 판단에 특히 유의한다.
@@ -142,7 +142,7 @@ function buildFreeSystemPrompt() {
 
 ## 규칙
 - 단일 유형 확정 금지. 후보 3개(candidateTypes rank 1~3, 각각 confidence 0~100).
-- 각 축에 forEvidence·againstEvidence를 함께 적는다. **같은 축 배열 안에서 문장을 반복하지 말 것**(첫 줄 요약 + 뒤에 같은 인용 반복 금지).
+- 각 축에 forEvidence·againstEvidence를 함께 적는다. **forEvidence는 축마다 3개 목표**(서로 다른 근거, 한 줄씩). **againstEvidence는 1~2개**. 같은 축 배열 안 문장 반복 금지.
 - indicators·프리미엄 전용 필드(관계 장문 등)는 넣지 않는다.
 - confidence는 축 근거를 반영해 **52~78** 정도, confidenceLevel은 MEDIUM|LOW 우선.
 
@@ -235,10 +235,10 @@ function buildPremiumUserParts({
   "confidenceReason": "한 줄",
   "observedFeatures": ["관찰 5~6개, 각 1문장"],
   "axisAnalysis": {
-    "EI": { "result": "E|I", "confidence": 0-100, "forEvidence": ["한 줄씩"], "againstEvidence": ["한 줄씩"] },
-    "SN": { "result": "S|N", "confidence": 0-100, "forEvidence": [], "againstEvidence": [] },
-    "TF": { "result": "T|F", "confidence": 0-100, "forEvidence": [], "againstEvidence": [] },
-    "JP": { "result": "J|P", "confidence": 0-100, "forEvidence": [], "againstEvidence": [] }
+    "EI": { "result": "E|I", "confidence": 0-100, "forEvidence": ["근거1 한 줄", "근거2 한 줄", "근거3 한 줄"], "againstEvidence": ["반대 한 줄"] },
+    "SN": { "result": "S|N", "confidence": 0-100, "forEvidence": ["…", "…", "…"], "againstEvidence": ["…"] },
+    "TF": { "result": "T|F", "confidence": 0-100, "forEvidence": ["…", "…", "…"], "againstEvidence": ["…"] },
+    "JP": { "result": "J|P", "confidence": 0-100, "forEvidence": ["…", "…", "…"], "againstEvidence": ["…"] }
   },
   "candidateTypes": [
     { "type": "XXXX", "rank": 1, "confidence": 60, "reason": "근거 2문장 이내" },
@@ -280,7 +280,7 @@ function buildPremiumUserParts({
 
 축 confidence는 해당 축 판단 강도(0~100). 후보 3개 type은 서로 다르게. 후보별 confidence는 루트 confidence와 조화(1순위 ≥ 2순위 ≥ 3순위). 빈 값 null/[].
 
-**중요**: JSON이 잘리면 무효입니다. axisAnalysis for/against·candidateTypes reason·keyEvidenceSummary(최대 5개)는 **한 줄 위주로 간결히**. forEvidence·againstEvidence는 **항목 간 내용이 겹치지 않게**(한 근거를 두 번 쓰지 말 것). 반면 **relationshipAndCommunication·workAndRoutine·practicalTips**는 프리미엄 가치 핵심이므로 **실전 조언을 충분히**(각 문자열 필드 최소 2~3문장, tips는 풍부하게) 작성하세요.`,
+**중요**: JSON이 잘리면 무효입니다. axisAnalysis **각 축 forEvidence는 3개**(목표)·**againstEvidence는 1~2개**를 한 줄씩, **항목 간 중복 없이**. candidateTypes reason·keyEvidenceSummary(최대 5개)도 한 줄 위주. **relationshipAndCommunication·workAndRoutine·practicalTips**는 프리미엄 가치 핵심이므로 **실전 조언을 충분히**(각 문자열 필드 최소 2~3문장, tips는 풍부하게) 작성하세요.`,
   });
 
   return parts;
@@ -320,6 +320,7 @@ function buildFreeUserParts({
   parts.push({
     text: `\n## 출력 (JSON만)
 아래 키를 사용하세요. tier는 "free". 루트 mbtiType·confidence·confidenceLevel은 candidateTypes·axisAnalysis와 일치하게 쓰세요.
+**axisAnalysis** 각 축: forEvidence **3개**(이미지·말투 등 서로 다른 신호, 한 줄씩), againstEvidence **1~2개**. 항목 간 문장 중복 금지.
 
 {
   "tier": "free",
@@ -328,10 +329,10 @@ function buildFreeUserParts({
   "confidenceLevel": "MEDIUM|LOW",
   "observedFeatures": ["관찰 가능한 신호 5개 이상"],
   "axisAnalysis": {
-    "EI": { "result": "E|I", "confidence": 0-100, "forEvidence": ["…"], "againstEvidence": ["…"] },
-    "SN": { "result": "S|N", "confidence": 0-100, "forEvidence": [], "againstEvidence": [] },
-    "TF": { "result": "T|F", "confidence": 0-100, "forEvidence": [], "againstEvidence": [] },
-    "JP": { "result": "J|P", "confidence": 0-100, "forEvidence": [], "againstEvidence": [] }
+    "EI": { "result": "E|I", "confidence": 0-100, "forEvidence": ["근거1", "근거2", "근거3"], "againstEvidence": ["반대1"] },
+    "SN": { "result": "S|N", "confidence": 0-100, "forEvidence": ["…", "…", "…"], "againstEvidence": ["…"] },
+    "TF": { "result": "T|F", "confidence": 0-100, "forEvidence": ["…", "…", "…"], "againstEvidence": ["…"] },
+    "JP": { "result": "J|P", "confidence": 0-100, "forEvidence": ["…", "…", "…"], "againstEvidence": ["…"] }
   },
   "candidateTypes": [
     { "type": "XXXX", "rank": 1, "confidence": 58, "reason": "근거 요약" },
