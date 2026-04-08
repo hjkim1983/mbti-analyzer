@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo } from "react";
 import UploadCard from "@/components/UploadCard";
-import MemoCard from "@/components/MemoCard";
+import PremiumObserverTraitsCard from "@/components/PremiumObserverTraitsCard";
 import AnalyzeButton from "@/components/AnalyzeButton";
 import { RELATIONSHIP_OPTIONS } from "@/constants/mbti-data";
 import { BEHAVIOR_QUESTIONS } from "@/constants/behavior-questions";
@@ -20,13 +20,15 @@ const REL_GRID_ICONS = {
 };
 
 /**
- * 프리미엄 입력 — 업로드 → 관계 → 문항 1개씩 → 메모·분석 (v5 스타일)
+ * 프리미엄 입력 — 업로드 → 관계 → 문항 1개씩 → 관찰 특징(복수)·분석 (v5 스타일)
  */
 export default function PremiumInputWizard({
   onBackToTier,
   images,
   targetName,
   memo,
+  observerTraitIds,
+  onToggleObserverTrait,
   relationship,
   behaviorAnswers,
   onAddImages,
@@ -50,7 +52,7 @@ export default function PremiumInputWizard({
   const [fadeKey, setFadeKey] = useState(0);
 
   const nQ = BEHAVIOR_QUESTIONS.length;
-  /** 0 업로드, 1 관계, 2..(1+nQ) 문항, 마지막 메모 */
+  /** 0 업로드, 1 관계, 2..(1+nQ) 문항, 마지막 관찰 특징 */
   const totalSteps = 2 + nQ + 1;
   const lastStep = totalSteps - 1;
 
@@ -101,7 +103,7 @@ export default function PremiumInputWizard({
         ? "관계 설정"
         : questionIndex >= 0
           ? `질문 ${questionIndex + 1}/${nQ}`
-          : "추가 메모";
+          : "관찰 특징";
 
   const handleAnswer = (qId, choice) => {
     onBehaviorAnswer(qId, choice);
@@ -350,20 +352,22 @@ export default function PremiumInputWizard({
               className="text-2xl font-extrabold leading-snug mb-3"
               style={{ color: "var(--mbti-warm-text)" }}
             >
-              더 알려주고 싶은 게
+              상대방의 특징을
               <br />
-              있나요?
+              골라주세요
             </h2>
             <p
               className="text-sm mb-5 leading-relaxed"
               style={{ color: "var(--mbti-warm-text-muted)" }}
             >
-              선택사항이에요. 비워두고 바로 분석해도 돼요.
+              해당되는 항목을 복수 선택할 수 있어요. 비워두고 바로 분석해도
+              돼요.
             </p>
-            <MemoCard
-              memo={memo}
-              onMemoChange={onMemoChange}
-              isDeep
+            <PremiumObserverTraitsCard
+              selectedIds={observerTraitIds}
+              onToggleTrait={onToggleObserverTrait}
+              memoExtra={memo}
+              onMemoExtraChange={onMemoChange}
             />
             <div
               className="mbti-warm-card mt-6 p-4 text-sm leading-8"
@@ -385,7 +389,10 @@ export default function PremiumInputWizard({
                 ✅{" "}
                 {Object.keys(behaviorAnswers).length}/{nQ} 문항
               </div>
-              {memo.trim() ? <div>📝 메모 있음</div> : null}
+              {observerTraitIds.length > 0 ? (
+                <div>🏷️ 특징 {observerTraitIds.length}개 선택</div>
+              ) : null}
+              {memo.trim() ? <div>📝 직접 입력 있음</div> : null}
             </div>
             <AnalyzeButton
               canAnalyze={canAnalyze}
@@ -396,7 +403,9 @@ export default function PremiumInputWizard({
               onAnalyze={requestAnalysis}
               isLoading={isAnalysisBusy}
               isDeepTab
-              memoLength={memo.trim().length}
+              memoLength={
+                observerTraitIds.length + memo.trim().length
+              }
               relationshipOk={Boolean(relationship)}
               behaviorOk={allBehaviorAnswered}
               formIncompleteHint={formIncompleteHint}

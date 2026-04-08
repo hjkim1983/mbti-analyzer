@@ -78,7 +78,7 @@ export default function AnalyzeButton({
                   : "bg-white/40 text-gray-400"
               }`}
             >
-              {hasMemo ? "✓" : "○"} 메모 {hasMemo ? "입력" : "선택"}
+              {hasMemo ? "✓" : "○"} 추가 정보 {hasMemo ? "입력" : "선택"}
             </span>
           )}
           {(isMulti || hasMemo || behaviorOk) && (
