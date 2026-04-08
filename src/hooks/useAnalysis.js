@@ -19,6 +19,15 @@ import {
   summarizeAnalyzeBodyForLog,
 } from "@/lib/dev-mode";
 
+/** Promise 거부값이 Event 등 비-Error 일 때 [object Event] 방지 */
+function rejectReasonToMessage(err, fallback) {
+  if (typeof err === "string" && err.trim()) return err;
+  if (err instanceof Error && err.message) return err.message;
+  if (err && typeof err === "object" && typeof err.message === "string" && err.message)
+    return err.message;
+  return fallback;
+}
+
 export default function useAnalysis() {
   const [stage, setStage] = useState("main");
   /** free | premium — UI 탭 (API mode와 동일) */
@@ -179,7 +188,9 @@ export default function useAnalysis() {
         })
         .catch((err) => {
           clearInterval(timerRef.current);
-          setError(err.message || "분석 중 오류가 발생했어요.");
+          setError(
+            rejectReasonToMessage(err, "분석 중 오류가 발생했어요."),
+          );
           setStage("main");
         });
     },
@@ -279,7 +290,7 @@ export default function useAnalysis() {
         try {
           startLoading(callAnalyzeApi(null, ANALYSIS_MODE.PREMIUM));
         } catch (err) {
-          setError(err.message);
+          setError(rejectReasonToMessage(err, "분석 요청을 시작할 수 없습니다."));
           setStage("main");
         } finally {
           setIsChecking(false);
@@ -297,7 +308,10 @@ export default function useAnalysis() {
         try {
           startLoading(
             callAnalyzeApi(null, ANALYSIS_MODE.FREE).catch((err) => {
-              if (err.message === "PAYMENT_REQUIRED") {
+              if (
+                err instanceof Error &&
+                err.message === "PAYMENT_REQUIRED"
+              ) {
                 clearInterval(timerRef.current);
                 setActiveTabState("premium");
                 setStage("payment");
@@ -310,7 +324,7 @@ export default function useAnalysis() {
             }),
           );
         } catch (err) {
-          setError(err.message);
+          setError(rejectReasonToMessage(err, "분석 요청을 시작할 수 없습니다."));
           setStage("main");
         } finally {
           setIsChecking(false);
@@ -332,7 +346,10 @@ export default function useAnalysis() {
 
       startLoading(
         apiPromise.catch((err) => {
-          if (err.message === "PAYMENT_REQUIRED") {
+          if (
+            err instanceof Error &&
+            err.message === "PAYMENT_REQUIRED"
+          ) {
             clearInterval(timerRef.current);
             setActiveTabState("premium");
             setStage("payment");
@@ -345,7 +362,7 @@ export default function useAnalysis() {
         }),
       );
     } catch (err) {
-      setError(err.message);
+      setError(rejectReasonToMessage(err, "분석 요청을 시작할 수 없습니다."));
       setStage("main");
     } finally {
       setIsChecking(false);

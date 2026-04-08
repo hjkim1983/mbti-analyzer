@@ -76,10 +76,21 @@ export function fileToBase64(file, totalImages = 1, onProgress, options = {}) {
           compressedSize: Math.round((base64.length * 3) / 4),
         });
       };
-      img.onerror = reject;
+      // 브라우저는 onerror 에 ProgressEvent 를 넘김 → reject(event) 시 Next 오버레이가 [object Event] 로만 표시됨
+      img.onerror = () =>
+        reject(new Error("이미지를 불러오거나 압축할 수 없습니다. 다른 파일로 시도해 주세요."));
       img.src = reader.result;
     };
-    reader.onerror = reject;
+    reader.onerror = () => {
+      const hint = reader.error?.message;
+      reject(
+        new Error(
+          hint
+            ? `파일을 읽을 수 없습니다: ${hint}`
+            : "이미지 파일을 읽을 수 없습니다.",
+        ),
+      );
+    };
     reader.readAsDataURL(file);
   });
 }
