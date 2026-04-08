@@ -334,7 +334,7 @@ export default function ResultScreen({
                   <GlassCard
                     key={key}
                     animate
-                    className="!p-0 overflow-hidden border border-white/50 bg-white/35"
+                    className="!p-0 overflow-hidden border-2 border-amber-300/70 shadow-md rounded-[1.25rem] bg-transparent"
                   >
                     <button
                       type="button"
@@ -347,34 +347,48 @@ export default function ResultScreen({
                           [key]: !prev[key],
                         }))
                       }
-                      className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left rounded-[inherit] hover:bg-white/25 active:bg-white/35 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2"
+                      className={
+                        open
+                          ? "w-full flex flex-row items-center justify-between gap-3 px-4 py-3 text-left bg-gradient-to-r from-amber-200 via-yellow-200 to-amber-100 hover:brightness-[1.02] active:brightness-95 transition-[filter] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-50"
+                          : "w-full flex flex-col items-center justify-center text-center px-6 py-10 sm:py-12 bg-gradient-to-br from-amber-200 via-yellow-100 to-orange-100 hover:brightness-[1.03] active:brightness-95 transition-[filter] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-50"
+                      }
                     >
-                      <div className="min-w-0 flex-1">
-                        <p
-                          className="text-base font-extrabold leading-snug"
-                          style={{ color }}
-                        >
-                          {compactTitle}
-                        </p>
-                        <p className="text-[11px] text-gray-500 mt-1">
-                          {open
-                            ? "탭하여 접기"
-                            : `${win} 쪽 우세 · 강도 약 ${conf}% · 탭하여 상세 보기`}
-                        </p>
-                      </div>
-                      <span
-                        className="shrink-0 text-gray-400 text-lg font-bold w-8 text-center select-none"
-                        aria-hidden
-                      >
-                        {open ? "▲" : "▼"}
-                      </span>
+                      {open ? (
+                        <>
+                          <p className="text-base font-extrabold text-amber-950 tracking-wide">
+                            {compactTitle}
+                          </p>
+                          <span className="shrink-0 text-amber-900/80 text-sm font-bold flex items-center gap-1">
+                            접기
+                            <span aria-hidden>▲</span>
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-3xl sm:text-4xl font-black text-amber-950 tracking-tight leading-none drop-shadow-sm">
+                            {compactTitle}
+                          </p>
+                          <p className="text-sm sm:text-base font-bold text-amber-900/90 mt-4 max-w-[16rem] leading-snug">
+                            이 축, 대화 속에서 어느 쪽에 더 가까울까요?
+                          </p>
+                          <p className="text-xs sm:text-sm font-semibold text-amber-800/75 mt-2">
+                            근거와 판단 강도는 눌러서 알아보기
+                          </p>
+                          <span
+                            className="mt-5 text-amber-900/60 text-xl select-none"
+                            aria-hidden
+                          >
+                            ▼
+                          </span>
+                        </>
+                      )}
                     </button>
                     {open && (
                       <div
                         id={panelId}
                         role="region"
                         aria-labelledby={`axis-trigger-${key}`}
-                        className="px-5 pb-5 pt-0 border-t border-white/40"
+                        className="px-5 pb-5 pt-0 border-t border-amber-200/80 bg-white/90 backdrop-blur-sm"
                       >
                         <div className="flex items-center justify-between gap-2 mb-3 flex-wrap pt-4">
                           <p className="text-base font-extrabold text-gray-900 leading-snug">
