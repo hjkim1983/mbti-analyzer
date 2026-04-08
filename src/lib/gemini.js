@@ -251,9 +251,27 @@ function buildPremiumUserParts({
   "profileImageNote": "프로필·배경 보조 신호(없으면 빈 문자열)",
   "oneLineConclusion": "한 줄 결론",
   "keyEvidenceSummary": [{ "snippet": "한 줄", "axis": "EI", "insight": "한 줄" }],
-  "practicalTips": ["실전 팁"],
-  "workAndRoutine": { "summary": "", "tips": [] },
-  "relationshipAndCommunication": { "summary": "", "tips": [] },
+  "practicalTips": {
+    "emotionVsDirect": "감정 표현 vs 사실·논리 전달 선호를 대화 근거와 연결해 2~4문장",
+    "effectiveCommunication": ["이 사람에게 잘 통하는 말하기·톤·문장 예시 4~6개, 각 1문장"],
+    "whenHurt": ["서운함·불만을 전할 때 주의·추천 표현 3~5개"],
+    "conflictAvoid": ["갈등 시 피하면 좋은 말·톤·태도 3~5개"],
+    "scheduling": ["약속·일정·협의할 때 팁 3~5개"]
+  },
+  "relationshipAndCommunication": {
+    "summary": "관계·소통 전체 톤 4~6문장. 대화에서 본 근거 1문장 + 추정 한계 1문장 포함",
+    "whenInterested": "호감·관심이 있을 때 말투·리액션·주도성 3~5문장, 구체 행동 예시 1개 이상",
+    "whenUncomfortable": "불편·거리 둘 때 신호·회피 패턴 3~5문장",
+    "whenClose": "친밀해졌을 때 변화·기대에 맞는 소통 3~5문장",
+    "inConflict": "갈등·오해 시 반응과 화해에 도움이 되는 접근 3~5문장",
+    "replyAndEmoji": "답장 속도·이모지·말끝·장문/단문 선호 2~4문장",
+    "contactPreference": "연락 빈도·채널·무응답 해석 시 주의점 3~5문장",
+    "tips": ["연락·만남 전 실행 팁 4~7개, 각 1~2문장"]
+  },
+  "workAndRoutine": {
+    "summary": "업무·학습·협업 스타일 4~6문장: 마감·역할·피드백·집중 방식을 대화/메모 근거와 연결",
+    "tips": ["회의·과제·협업·리마인드 등 구체 행동 팁 5~8개, 각 1~2문장"]
+  },
   "cautionAndMisread": { "points": [] },
   "quotedInsights": [],
   "tags": ["#태그"]
@@ -261,7 +279,7 @@ function buildPremiumUserParts({
 
 축 confidence는 해당 축 판단 강도(0~100). 후보 3개 type은 서로 다르게. 후보별 confidence는 루트 confidence와 조화(1순위 ≥ 2순위 ≥ 3순위). 빈 값 null/[].
 
-**중요**: 응답이 출력 한도로 잘리면 JSON이 무효가 됩니다. 인용은 최소화하고, 축별 근거·후보 reason·keyEvidenceSummary(최대 5개)는 짧게 유지하세요. workAndRoutine 등 긴 필드도 요약 위주.`,
+**중요**: JSON이 잘리면 무효입니다. axisAnalysis for/against·candidateTypes reason·keyEvidenceSummary(최대 5개)는 **한 줄 위주로 간결히**. 반면 **relationshipAndCommunication·workAndRoutine·practicalTips**는 프리미엄 가치 핵심이므로 **실전 조언을 충분히**(각 문자열 필드 최소 2~3문장, tips는 풍부하게) 작성하세요.`,
   });
 
   return parts;

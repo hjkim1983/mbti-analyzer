@@ -292,9 +292,25 @@ export function normalizeGeminiAnalysisResult(raw, opts = {}) {
       ).slice(0, 220);
     }
 
-    if (!Array.isArray(merged.practicalTips) || merged.practicalTips.length === 0) {
-      if (Array.isArray(raw.communicationTips) && raw.communicationTips.length) {
-        merged.practicalTips = raw.communicationTips.map(String);
+    {
+      const pt = merged.practicalTips;
+      const hasStructuredPractical =
+        pt &&
+        typeof pt === "object" &&
+        !Array.isArray(pt) &&
+        (String(pt.emotionVsDirect ?? "").trim() ||
+          (Array.isArray(pt.effectiveCommunication) &&
+            pt.effectiveCommunication.length > 0) ||
+          (Array.isArray(pt.whenHurt) && pt.whenHurt.length > 0) ||
+          (Array.isArray(pt.conflictAvoid) && pt.conflictAvoid.length > 0) ||
+          (Array.isArray(pt.scheduling) && pt.scheduling.length > 0));
+      const needArrayFallback =
+        pt == null ||
+        (Array.isArray(pt) && pt.length === 0);
+      if (!hasStructuredPractical && needArrayFallback) {
+        if (Array.isArray(raw.communicationTips) && raw.communicationTips.length) {
+          merged.practicalTips = raw.communicationTips.map(String);
+        }
       }
     }
 

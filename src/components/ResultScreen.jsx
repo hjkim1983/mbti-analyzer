@@ -985,10 +985,10 @@ export default function ResultScreen({
           relationshipAndCommunication.replyAndEmoji?.trim() ||
           relationshipAndCommunication.contactPreference?.trim() ||
           relationshipAndCommunication.tips?.length > 0) && (
-        <GlassCard animate delay={2} className="mb-4">
-          <h3 className="font-extrabold text-gray-900 mb-2 flex items-center gap-2">
+        <GlassCard animate delay={2} className="mb-4 w-full">
+          <h3 className="font-extrabold text-gray-900 mb-3 text-base flex items-center gap-2 leading-snug">
             <span
-              className="w-7 h-7 rounded-xl flex items-center justify-center text-sm"
+              className="w-8 h-8 rounded-xl flex items-center justify-center text-base shrink-0"
               style={{ background: "#FBCFE8" }}
             >
               💕
@@ -996,7 +996,7 @@ export default function ResultScreen({
             관계·소통 스타일
           </h3>
           {relationshipAndCommunication.summary?.trim() && (
-            <p className="text-sm text-gray-800 leading-relaxed mb-4">
+            <p className="text-base text-gray-800 leading-[1.7] mb-5">
               {relationshipAndCommunication.summary}
             </p>
           )}
@@ -1036,23 +1036,26 @@ export default function ResultScreen({
             .map((x) => (
               <div
                 key={x.k}
-                className="mb-3 p-3 rounded-2xl bg-pink-50/40 border border-pink-100/80"
+                className="mb-4 last:mb-0 p-4 rounded-2xl bg-pink-50/40 border border-pink-100/80"
               >
-                <p className="text-[11px] font-extrabold text-pink-900 mb-1">
+                <p className="text-sm font-extrabold text-pink-900 mb-2">
                   {x.label}
                 </p>
-                <p className="text-xs text-gray-800 leading-relaxed">{x.v}</p>
+                <p className="text-sm text-gray-800 leading-[1.7]">{x.v}</p>
               </div>
             ))}
           {relationshipAndCommunication.tips?.length > 0 && (
-            <div className="mt-2">
-              <p className="text-[11px] font-bold text-gray-600 mb-1.5">
-                연락할 때 참고
+            <div className="mt-4 pt-1 border-t border-pink-100/60">
+              <p className="text-sm font-bold text-gray-700 mb-3">
+                연락·만남 전에 참고하면 좋아요
               </p>
-              <ul className="space-y-1.5">
+              <ul className="space-y-2.5">
                 {relationshipAndCommunication.tips.map((t, i) => (
-                  <li key={i} className="text-xs text-gray-600 flex gap-2">
-                    <span className="text-pink-500 font-bold">✓</span>
+                  <li
+                    key={i}
+                    className="text-sm text-gray-700 flex gap-2.5 leading-[1.65]"
+                  >
+                    <span className="text-pink-500 font-bold shrink-0">✓</span>
                     <span>{t}</span>
                   </li>
                 ))}
@@ -1070,10 +1073,14 @@ export default function ResultScreen({
           practicalTips.whenHurt?.length > 0 ||
           practicalTips.conflictAvoid?.length > 0 ||
           practicalTips.scheduling?.length > 0) && (
-        <GlassCard animate delay={2} className="mb-4 border border-emerald-100 bg-emerald-50/20">
-          <h3 className="font-extrabold text-gray-900 mb-3 flex items-center gap-2">
+        <GlassCard
+          animate
+          delay={2}
+          className="mb-4 w-full border border-emerald-100 bg-emerald-50/20"
+        >
+          <h3 className="font-extrabold text-gray-900 mb-3 text-base flex items-center gap-2 leading-snug">
             <span
-              className="w-7 h-7 rounded-xl flex items-center justify-center text-sm"
+              className="w-8 h-8 rounded-xl flex items-center justify-center text-base shrink-0"
               style={{ background: "#6EE7B7" }}
             >
               🎯
@@ -1081,7 +1088,7 @@ export default function ResultScreen({
             실전 소통 가이드
           </h3>
           {practicalTips.emotionVsDirect?.trim() && (
-            <p className="text-xs text-gray-800 mb-3 p-2 rounded-xl bg-white/50">
+            <p className="text-sm text-gray-800 mb-4 p-3 rounded-xl bg-white/50 leading-[1.7]">
               <span className="font-bold text-emerald-900">감정 vs 핵심 — </span>
               {practicalTips.emotionVsDirect}
             </p>
@@ -1094,13 +1101,13 @@ export default function ResultScreen({
           ]
             .filter((s) => s.items?.length > 0)
             .map((s) => (
-              <div key={s.title} className="mb-3">
-                <p className="text-[11px] font-extrabold text-emerald-900 mb-1">
+              <div key={s.title} className="mb-4 last:mb-0">
+                <p className="text-sm font-extrabold text-emerald-900 mb-2">
                   {s.title}
                 </p>
-                <ul className="space-y-1">
+                <ul className="space-y-2">
                   {s.items.map((line, i) => (
-                    <li key={i} className="text-xs text-gray-700">
+                    <li key={i} className="text-sm text-gray-700 leading-[1.65] pl-1">
                       • {line}
                     </li>
                   ))}
@@ -1110,30 +1117,50 @@ export default function ResultScreen({
         </GlassCard>
       )}
 
-      {/* 프리미엄: 일·학습·협업 */}
-      {isPremium && workAndRoutine?.summary && (
-        <GlassCard animate delay={2} className="mb-4">
-          <h3 className="font-extrabold text-gray-900 mb-3 flex items-center gap-2">
+      {/* 프리미엄: 일·학습·협업 — 요약 또는 팁만 있어도 동일 폭 카드로 표시 */}
+      {isPremium &&
+        workAndRoutine &&
+        (workAndRoutine.summary?.trim() ||
+          (Array.isArray(workAndRoutine.tips) &&
+            workAndRoutine.tips.length > 0)) && (
+        <GlassCard animate delay={2} className="mb-4 w-full">
+          <h3 className="font-extrabold text-gray-900 mb-3 text-base flex items-center gap-2 leading-snug">
             <span
-              className="w-7 h-7 rounded-xl flex items-center justify-center text-sm"
+              className="w-8 h-8 rounded-xl flex items-center justify-center text-base shrink-0"
               style={{ background: "#BFDBFE" }}
             >
               💼
             </span>
             일·학습·협업
           </h3>
-          <p className="text-sm text-gray-700 leading-relaxed mb-3">
-            {workAndRoutine.summary}
-          </p>
+          {workAndRoutine.summary?.trim() && (
+            <p className="text-base text-gray-700 leading-[1.7] mb-5">
+              {workAndRoutine.summary}
+            </p>
+          )}
           {workAndRoutine.tips?.length > 0 && (
-            <ul className="space-y-1.5">
-              {workAndRoutine.tips.map((t, i) => (
-                <li key={i} className="text-xs text-gray-600 flex gap-2">
-                  <span className="text-sky-600 font-bold">•</span>
-                  <span>{t}</span>
-                </li>
-              ))}
-            </ul>
+            <div
+              className={
+                workAndRoutine.summary?.trim()
+                  ? "pt-1 border-t border-sky-100/80"
+                  : ""
+              }
+            >
+              <p className="text-sm font-bold text-gray-700 mb-3">
+                협업·학습에서 이렇게 맞춰 보세요
+              </p>
+              <ul className="space-y-2.5">
+                {workAndRoutine.tips.map((t, i) => (
+                  <li
+                    key={i}
+                    className="text-sm text-gray-700 flex gap-2.5 leading-[1.65]"
+                  >
+                    <span className="text-sky-600 font-bold shrink-0">•</span>
+                    <span>{t}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </GlassCard>
       )}
