@@ -57,7 +57,7 @@ export default function TierPickScreen({
         <button
           type="button"
           onClick={onPickFree}
-          className="mbti-warm-card text-left p-5 rounded-[1.125rem] transition-all duration-200 active:scale-[0.99] hover:shadow-md border border-orange-200/30 hover:border-orange-300/50 min-h-[13.5rem] flex flex-col"
+          className="mbti-warm-card text-left p-5 rounded-[1.125rem] transition-all duration-200 active:scale-[0.99] hover:shadow-md border border-orange-200/30 hover:border-orange-300/50 min-h-[8.1rem] flex flex-col"
         >
           <div className="flex gap-4 flex-1 items-stretch min-h-0">
             <span className="text-3xl shrink-0" aria-hidden>
@@ -68,7 +68,7 @@ export default function TierPickScreen({
                 className="font-bold text-base mb-1"
                 style={{ color: "var(--mbti-warm-text)" }}
               >
-                빠른 추정 (무료)
+                기본 테스트 (무료)
               </p>
               <p
                 className="text-xs leading-relaxed flex-1"
@@ -95,7 +95,7 @@ export default function TierPickScreen({
         <button
           type="button"
           onClick={onPickPremium}
-          className="mbti-warm-card text-left p-5 rounded-[1.125rem] transition-all duration-200 active:scale-[0.99] hover:shadow-md border-2 border-orange-300/40 hover:border-orange-400/60 min-h-[13.5rem] flex flex-col"
+          className="mbti-warm-card text-left p-5 rounded-[1.125rem] transition-all duration-200 active:scale-[0.99] hover:shadow-md border-2 border-orange-300/40 hover:border-orange-400/60 min-h-[8.1rem] flex flex-col"
           style={{
             boxShadow: "0 4px 20px rgba(232,120,10,0.12)",
           }}
@@ -109,7 +109,7 @@ export default function TierPickScreen({
                 className="font-bold text-base mb-1"
                 style={{ color: "var(--mbti-warm-text)" }}
               >
-                심층 리포트 (프리미엄)
+                프리미엄 테스트 (유료)
               </p>
               <p
                 className="text-xs leading-relaxed flex-1"
