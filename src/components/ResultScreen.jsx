@@ -145,6 +145,8 @@ export default function ResultScreen({
   const [relationshipAccordionOpen, setRelationshipAccordionOpen] =
     useState(false);
   const [practicalAccordionOpen, setPracticalAccordionOpen] = useState(false);
+  const [workRoutineAccordionOpen, setWorkRoutineAccordionOpen] =
+    useState(false);
 
   if (!result) return null;
 
@@ -1447,62 +1449,81 @@ export default function ResultScreen({
         </GoldAccordion>
       )}
 
-      {/* 프리미엄: 일·학습·협업 — 요약 또는 팁만 있어도 동일 폭 카드로 표시 */}
+      {/* 프리미엄: 일·학습·협업 — 골드 아코디언 (관계·실전과 동일 패턴) */}
       {isPremium &&
         workAndRoutine &&
         (workAndRoutine.summary?.trim() ||
           (Array.isArray(workAndRoutine.tips) &&
             workAndRoutine.tips.length > 0)) && (
-        <GlassCard animate delay={2} className="mb-4 w-full">
-          <h3 className="font-extrabold text-gray-900 mb-3 text-base flex items-center gap-2 leading-snug">
-            <span
-              className="w-8 h-8 rounded-xl flex items-center justify-center text-base shrink-0"
-              style={{ background: "#BFDBFE" }}
-            >
-              💼
-            </span>
-            일·학습·협업
-          </h3>
-          {workAndRoutine.summary?.trim() && (
-            <div className="mb-5">
-              <ReadableBlock
-                text={workAndRoutine.summary}
-                className="text-base text-gray-700 read-body-p--scan"
-              />
-            </div>
-          )}
-          {workAndRoutine.tips?.length > 0 && (
-            <div
-              className={
-                workAndRoutine.summary?.trim()
-                  ? "pt-1 border-t border-sky-100/80"
-                  : ""
-              }
-            >
-              <p className="text-sm font-bold text-gray-700 mb-3">
-                <mark className="hl-mark">협업·학습</mark>에서 이렇게 맞춰 보세요
-              </p>
-              <ul className="space-y-3">
-                {workAndRoutine.tips.map((t, i) => (
-                  <li key={i}>
-                    <div className="flex gap-2.5 items-start">
-                      <span className="text-sky-600 font-bold shrink-0 pt-0.5">
-                        •
-                      </span>
-                      <div className="read-li-long read-li-long--sky min-w-0 flex-1">
-                        <ReadableBlock
-                          text={String(t)}
-                          compact
-                          className="text-sm text-gray-700 read-body-p--scan"
-                        />
+        <GoldAccordion
+          idPrefix="work-routine"
+          open={workRoutineAccordionOpen}
+          onToggle={() =>
+            setWorkRoutineAccordionOpen((v) => !v)
+          }
+          title={
+            <h3 className="font-extrabold text-gray-900 text-base flex items-center gap-2 leading-snug">
+              <span
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-base"
+                style={{ background: "#BFDBFE" }}
+              >
+                💼
+              </span>
+              일·학습·협업
+            </h3>
+          }
+        >
+          <GlassCard animate delay={2} className="w-full !shadow-none">
+            {workAndRoutine.summary?.trim() && (
+              <div className="mb-5">
+                <p className="mb-2 text-xs font-extrabold uppercase tracking-wide text-sky-900/75">
+                  업무·학습에서의 스타일
+                </p>
+                <div className="rounded-xl border border-sky-100/90 bg-sky-50/35 p-4">
+                  <ReadableBlock
+                    text={workAndRoutine.summary}
+                    className="text-[15px] leading-relaxed text-gray-800 read-body-p--scan"
+                  />
+                </div>
+              </div>
+            )}
+            {workAndRoutine.tips?.length > 0 && (
+              <div
+                className={
+                  workAndRoutine.summary?.trim()
+                    ? "border-t border-sky-100/80 pt-4"
+                    : ""
+                }
+              >
+                <p className="mb-3 text-sm font-bold text-gray-800">
+                  <mark className="hl-mark">협업·학습</mark>할 때 이렇게 맞춰
+                  보세요
+                </p>
+                <ul className="space-y-3">
+                  {workAndRoutine.tips.map((t, i) => (
+                    <li
+                      key={i}
+                      className="rounded-xl border border-sky-100/80 border-l-[3px] border-l-sky-500 bg-sky-50/55 py-2.5 pl-3 pr-3"
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <span className="shrink-0 pt-0.5 font-bold text-sky-600">
+                          •
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <ReadableBlock
+                            text={String(t)}
+                            compact
+                            className="text-sm leading-relaxed text-gray-800 read-body-p--scan"
+                          />
+                        </div>
                       </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </GlassCard>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </GlassCard>
+        </GoldAccordion>
       )}
 
       {/* 대화 + 프로필 요약 — 관찰 특징 블록이 있으면 생략 */}
