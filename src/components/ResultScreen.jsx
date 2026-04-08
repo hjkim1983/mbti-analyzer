@@ -334,6 +334,136 @@ export default function ResultScreen({
         }))
       : keyEvidenceSummary;
 
+  /** 근거 우선 레이아웃: 유력 후보 아코디언 펼침 시 함께 노출 (후보 행이 없을 때는 단독 표시) */
+  const candidateSectionExtras = (
+    <>
+      {isPremium && (oneLineConclusion?.trim() || title) && (
+        <div className="rounded-xl p-3 text-center bg-white/30 border border-white/50">
+          <p className="text-[10px] font-bold text-gray-500 mb-0.5">
+            한 줄 결론
+          </p>
+          <p className="text-sm font-extrabold text-gray-900">
+            {oneLineConclusion?.trim() || `${mbtiType} / ${title}`}
+          </p>
+        </div>
+      )}
+      {showAnalysisAboutBlock && (
+        <div className="rounded-2xl p-4 bg-gray-100/80 border border-gray-200/80">
+          <p className="text-sm font-bold text-gray-800 mb-2">
+            분석에 대한 설명
+          </p>
+          <p className="text-sm text-gray-600 mb-3 leading-relaxed">
+            이 분석은{" "}
+            <mark className="hl-mark">제한된 데이터</mark>를 기반으로 한
+            추정이에요. 아래에서는{" "}
+            <span className="font-bold text-gray-800">1~3순위 후보</span>가
+            왜 이렇게 제시되었는지와,{" "}
+            <span className="font-bold text-gray-800">해석 시 한계</span>를
+            함께 안내합니다.
+          </p>
+          {analysisExplanationText.length > 0 && (
+            <div className="mb-4">
+              <ReadableBlock
+                text={analysisExplanationText}
+                compact
+                className="text-sm text-gray-800 read-body-p--scan whitespace-pre-wrap"
+              />
+            </div>
+          )}
+          {limitationLinesAll.length > 0 && (
+            <>
+              {analysisExplanationText.length > 0 && (
+                <p className="text-xs font-bold text-gray-600 mb-2">
+                  <mark className="hl-mark">추가로 참고할 점</mark>
+                </p>
+              )}
+              <ul className="space-y-2.5">
+                {limitationLinesAll.map((line, i) => (
+                  <li key={i}>
+                    <div className="read-li-long border-l-[3px] border-gray-300 bg-white/35 pl-2">
+                      <ReadableBlock
+                        text={String(line)}
+                        compact
+                        className="text-sm text-gray-700 read-body-p--scan"
+                      />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
+      )}
+      {profileImageNote?.trim() && (
+        <div className="text-[11px] text-gray-500 text-center px-2">
+          <p className="font-bold text-gray-600 mb-1.5">
+            📸 참고:{" "}
+            <mark className="hl-mark">프로필 사진 인상</mark>
+          </p>
+          <ReadableBlock
+            text={profileImageNote}
+            compact
+            className="text-[11px] text-gray-500 read-body-p--scan text-center"
+          />
+        </div>
+      )}
+      <div
+        className="rounded-2xl overflow-hidden shadow-md w-full border anim-slide-up"
+        style={{
+          background: `linear-gradient(135deg,${color}18,${color}33)`,
+          borderColor: `${color}44`,
+        }}
+      >
+        <div className="p-4 text-center">
+          {targetName?.trim() && (
+            <p className="text-[10px] font-bold text-gray-400 mb-1 uppercase tracking-wide">
+              {targetName}
+            </p>
+          )}
+          <div className="text-3xl mb-1">{emoji}</div>
+          <div
+            className="text-3xl font-black tracking-widest mb-0.5"
+            style={{ color }}
+          >
+            {normalizeMbtiCode(mbtiType) || mbtiType}
+          </div>
+          <p className="text-xs text-gray-600 font-semibold mb-1">{title}</p>
+          <p className="text-[10px] text-gray-500">
+            확신도 {displayConf}% · {levelKo}
+          </p>
+          {tags && tags.length > 0 && (
+            <div className="flex justify-center gap-1 flex-wrap mt-2">
+              {tags.slice(0, 6).map((tag) => (
+                <span
+                  key={tag}
+                  className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white"
+                  style={{ background: color }}
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      <p className="text-center text-xs text-gray-500 mt-2 mb-1">
+        가장 유력한 후보입니다
+      </p>
+      {isPremium && confidenceReason?.trim() && (
+        <div className="text-[11px] text-gray-600 px-2 mt-2 max-w-md mx-auto text-left">
+          <p className="font-bold text-gray-700 mb-1.5 text-center">
+            <mark className="hl-mark">왜 이 정도로 봤나요?</mark>
+          </p>
+          <ReadableBlock
+            text={confidenceReason}
+            compact
+            className="text-[11px] text-gray-600 read-body-p--scan"
+          />
+        </div>
+      )}
+    </>
+  );
+
   return (
     <div className="pt-6">
       {/* 분석 티어 뱃지 */}
@@ -670,8 +800,8 @@ export default function ResultScreen({
             </div>
           )}
 
-          {/* 3. 후보 3개 — 골드 아코디언 */}
-          {candidateRows.length > 0 && (
+          {/* 3. 유력 MBTI 후보 — 골드 아코디언 + 펼침 시 결론·분석 설명·메인 카드 동시 노출 */}
+          {candidateRows.length > 0 ? (
             <GoldAccordion
               idPrefix="candidates"
               open={candidateAccordionOpen}
@@ -729,18 +859,12 @@ export default function ResultScreen({
                   );
                 })}
               </div>
+              <div className="mt-4 space-y-4 border-t border-amber-400/25 pt-4">
+                {candidateSectionExtras}
+              </div>
             </GoldAccordion>
-          )}
-
-          {isPremium && (oneLineConclusion?.trim() || title) && (
-            <div className="rounded-xl p-3 text-center bg-white/30 border border-white/50">
-              <p className="text-[10px] font-bold text-gray-500 mb-0.5">
-                한 줄 결론
-              </p>
-              <p className="text-sm font-extrabold text-gray-900">
-                {oneLineConclusion?.trim() || `${mbtiType} / ${title}`}
-              </p>
-            </div>
+          ) : (
+            <div className="space-y-4">{candidateSectionExtras}</div>
           )}
 
           {/* 4. 왜 헷갈리는지 */}
@@ -789,126 +913,6 @@ export default function ResultScreen({
                 </ol>
               </GlassCard>
             </GoldAccordion>
-          )}
-
-          {/* 6. 분석에 대한 설명 (순위 근거 + 한계) */}
-          {showAnalysisAboutBlock && (
-            <div className="rounded-2xl p-4 bg-gray-100/80 border border-gray-200/80">
-              <p className="text-sm font-bold text-gray-800 mb-2">
-                분석에 대한 설명
-              </p>
-              <p className="text-sm text-gray-600 mb-3 leading-relaxed">
-                이 분석은{" "}
-                <mark className="hl-mark">제한된 데이터</mark>를 기반으로 한
-                추정이에요. 아래에서는{" "}
-                <span className="font-bold text-gray-800">1~3순위 후보</span>가
-                왜 이렇게 제시되었는지와,{" "}
-                <span className="font-bold text-gray-800">해석 시 한계</span>를
-                함께 안내합니다.
-              </p>
-              {analysisExplanationText.length > 0 && (
-                <div className="mb-4">
-                  <ReadableBlock
-                    text={analysisExplanationText}
-                    compact
-                    className="text-sm text-gray-800 read-body-p--scan whitespace-pre-wrap"
-                  />
-                </div>
-              )}
-              {limitationLinesAll.length > 0 && (
-                <>
-                  {analysisExplanationText.length > 0 && (
-                    <p className="text-xs font-bold text-gray-600 mb-2">
-                      <mark className="hl-mark">추가로 참고할 점</mark>
-                    </p>
-                  )}
-                  <ul className="space-y-2.5">
-                    {limitationLinesAll.map((line, i) => (
-                      <li key={i}>
-                        <div className="read-li-long border-l-[3px] border-gray-300 bg-white/35 pl-2">
-                          <ReadableBlock
-                            text={String(line)}
-                            compact
-                            className="text-sm text-gray-700 read-body-p--scan"
-                          />
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* 7. 프로필 인상 */}
-          {profileImageNote?.trim() && (
-            <div className="text-[11px] text-gray-500 text-center px-2">
-              <p className="font-bold text-gray-600 mb-1.5">
-                📸 참고:{" "}
-                <mark className="hl-mark">프로필 사진 인상</mark>
-              </p>
-              <ReadableBlock
-                text={profileImageNote}
-                compact
-                className="text-[11px] text-gray-500 read-body-p--scan text-center"
-              />
-            </div>
-          )}
-
-          {/* 8. 축소 MBTI 카드 — 위 GlassCard·후보 박스와 동일 가로 폭 */}
-          <div
-            className="rounded-2xl overflow-hidden shadow-md w-full border anim-slide-up"
-            style={{
-              background: `linear-gradient(135deg,${color}18,${color}33)`,
-              borderColor: `${color}44`,
-            }}
-          >
-            <div className="p-4 text-center">
-              {targetName?.trim() && (
-                <p className="text-[10px] font-bold text-gray-400 mb-1 uppercase tracking-wide">
-                  {targetName}
-                </p>
-              )}
-              <div className="text-3xl mb-1">{emoji}</div>
-              <div
-                className="text-3xl font-black tracking-widest mb-0.5"
-                style={{ color }}
-              >
-                {normalizeMbtiCode(mbtiType) || mbtiType}
-              </div>
-              <p className="text-xs text-gray-600 font-semibold mb-1">{title}</p>
-              <p className="text-[10px] text-gray-500">
-                확신도 {displayConf}% · {levelKo}
-              </p>
-              {tags && tags.length > 0 && (
-                <div className="flex justify-center gap-1 flex-wrap mt-2">
-                  {tags.slice(0, 6).map((tag) => (
-                    <span
-                      key={tag}
-                      className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white"
-                      style={{ background: color }}
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-          <p className="text-center text-xs text-gray-500 mt-2 mb-1">
-            가장 유력한 후보입니다
-          </p>
-          {isPremium && confidenceReason?.trim() && (
-            <div className="text-[11px] text-gray-600 px-2 mt-2 max-w-md mx-auto text-left">
-              <p className="font-bold text-gray-700 mb-1.5 text-center">
-                <mark className="hl-mark">왜 이 정도로 봤나요?</mark>
-              </p>
-              <ReadableBlock
-                text={confidenceReason}
-                compact
-                className="text-[11px] text-gray-600 read-body-p--scan"
-              />
-            </div>
           )}
         </div>
       )}
