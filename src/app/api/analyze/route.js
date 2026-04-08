@@ -16,6 +16,7 @@ import {
 } from "@/lib/analysis-tier";
 import { selectImagesForApi } from "@/lib/analysis-images";
 import { normalizeGeminiAnalysisResult } from "@/lib/analysis-result-normalize";
+import { sanitizeBehaviorAnswers } from "@/lib/behavior-answers-sanitize";
 
 const RELATIONSHIP_ALLOWED = new Set([
   "friend",
@@ -23,23 +24,13 @@ const RELATIONSHIP_ALLOWED = new Set([
   "lover",
   "coworker",
   "family",
+  "crush",
+  "acquaintance",
   "other",
-]);
-const CHAT_CONTEXT_ALLOWED = new Set([
-  "daily",
-  "work",
-  "conflict",
-  "comfort",
-  "plan",
-  "casual",
 ]);
 
 function sanitizeRelationship(v) {
   return typeof v === "string" && RELATIONSHIP_ALLOWED.has(v) ? v : null;
-}
-
-function sanitizeChatContext(v) {
-  return typeof v === "string" && CHAT_CONTEXT_ALLOWED.has(v) ? v : null;
 }
 
 // Vercel Hobby: 최대 60초 — 심층(최대 10장) 처리 시간 확보
@@ -55,9 +46,8 @@ export async function POST(request) {
       images,
       paymentId,
       mode: rawMode,
-      tags: rawTags,
       relationship: rawRelationship,
-      chatContext: rawChatContext,
+      behaviorAnswers: rawBehaviorAnswers,
     } = body;
 
     const mode = normalizeAnalysisMode(rawMode);
@@ -134,15 +124,19 @@ export async function POST(request) {
 
     const isPaid = needPay;
 
-    const contextTags = Array.isArray(rawTags)
-      ? rawTags
-          .map((t) => (typeof t === "string" ? t.trim() : ""))
-          .filter(Boolean)
-          .slice(0, 12)
-      : [];
-
     const relationship = sanitizeRelationship(rawRelationship);
-    const chatContext = sanitizeChatContext(rawChatContext);
+    const behaviorAnswers = sanitizeBehaviorAnswers(rawBehaviorAnswers);
+
+    if (!relationship || !behaviorAnswers) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "INVALID_INPUT",
+          message: "관계 선택과 행동 문항 10개에 모두 답해주세요",
+        },
+        { status: 400 },
+      );
+    }
 
     let result;
     try {
@@ -151,9 +145,8 @@ export async function POST(request) {
         memo: memoTrim,
         images: imagesForGemini,
         mode,
-        tags: contextTags,
         relationship,
-        chatContext,
+        behaviorAnswers,
       });
     } catch (err) {
       if (err.message === "ANALYSIS_TIMEOUT") {

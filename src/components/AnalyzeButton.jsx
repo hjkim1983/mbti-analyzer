@@ -14,6 +14,9 @@ export default function AnalyzeButton({
   isLoading,
   isDeepTab,
   memoLength = 0,
+  relationshipOk = false,
+  behaviorOk = false,
+  formIncompleteHint = null,
 }) {
   const used = freeCount?.used ?? 0;
   const freeNeedsPay = !isDeepTab && used >= FREE_LIMIT;
@@ -42,7 +45,25 @@ export default function AnalyzeButton({
           {imageCount > 0 ? "✓" : "○"} 캡처{" "}
           {imageCount > 0 ? `${imageCount}장` : "없음"}
         </span>
-        {isDeepTab ? (
+        <span
+          className={`text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1 ${
+            relationshipOk
+              ? "bg-green-50 text-green-600"
+              : "bg-white/40 text-gray-400"
+          }`}
+        >
+          {relationshipOk ? "✓" : "○"} 관계
+        </span>
+        <span
+          className={`text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1 ${
+            behaviorOk
+              ? "bg-green-50 text-green-600"
+              : "bg-white/40 text-gray-400"
+          }`}
+        >
+          {behaviorOk ? "✓" : "○"} 문항 10
+        </span>
+        {isDeepTab && (
           <span
             className={`text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1 ${
               hasMemo
@@ -50,25 +71,20 @@ export default function AnalyzeButton({
                 : "bg-white/40 text-gray-400"
             }`}
           >
-            {hasMemo ? "✓" : "○"} 추가 정보 {hasMemo ? "입력됨" : "선택"}
-          </span>
-        ) : (
-          <span
-            className={`text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1 ${
-              hasMemo
-                ? "bg-green-50 text-green-600"
-                : "bg-white/40 text-gray-400"
-            }`}
-          >
-            {hasMemo ? "✓" : "○"} 맥락·태그 {hasMemo ? "입력" : "선택"}
+            {hasMemo ? "✓" : "○"} 메모 {hasMemo ? "입력" : "선택"}
           </span>
         )}
-        {(isMulti || hasMemo) && (
+        {(isMulti || hasMemo || behaviorOk) && (
           <span
             className="text-xs px-2.5 py-1 rounded-full font-bold flex items-center gap-1"
             style={{ background: "rgba(254,229,0,0.2)", color: "#856C00" }}
           >
-            ✨ {isDeepTab ? "프리미엄" : isMulti && hasMemo ? "최고 정확도" : "높은 정확도"}
+            ✨{" "}
+            {isDeepTab
+              ? "프리미엄"
+              : isMulti && behaviorOk
+                ? "최고 정확도"
+                : "높은 정확도"}
           </span>
         )}
       </div>
@@ -103,6 +119,12 @@ export default function AnalyzeButton({
               : freeCount
                 ? `무료 빠른 추정 ${Math.max(0, FREE_LIMIT - used)}회 남음 · 약 5~15초`
                 : "약 5~15초 내에 결과를 드릴게요"}
+        </p>
+      )}
+
+      {!canAnalyze && !isLoading && formIncompleteHint && (
+        <p className="text-xs text-center text-gray-400 mt-2">
+          {formIncompleteHint}
         </p>
       )}
     </div>

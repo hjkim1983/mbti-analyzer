@@ -13,6 +13,7 @@ import {
   MAX_IMAGES_SENT_PREMIUM,
   ANALYSIS_MODE,
 } from "@/lib/analysis-tier";
+import { BEHAVIOR_QUESTIONS } from "@/constants/behavior-questions";
 
 export default function useAnalysis() {
   const [stage, setStage] = useState("main");
@@ -21,10 +22,9 @@ export default function useAnalysis() {
   const [images, setImages] = useState([]);
   const [targetName, setTargetName] = useState("");
   const [memo, setMemo] = useState("");
-  /** 행동형 태그 (메모 텍스트와 분리) */
-  const [selectedTags, setSelectedTags] = useState([]);
   const [relationship, setRelationship] = useState(null);
-  const [chatContext, setChatContext] = useState(null);
+  /** { q1: "A"|"B"|"skip", ... } */
+  const [behaviorAnswers, setBehaviorAnswers] = useState({});
   const [loadingStep, setLoadingStep] = useState(0);
   const [result, setResult] = useState(null);
   const [freeCount, setFreeCount] = useState(null);
@@ -41,16 +41,21 @@ export default function useAnalysis() {
   const maxImages =
     activeTab === "premium" ? MAX_IMAGES_PREMIUM : MAX_IMAGES_FREE;
   const isMulti = imageCount >= 2;
-  const hasMemo =
-    memo.trim().length > 0 ||
-    selectedTags.length > 0 ||
-    Boolean(relationship) ||
-    Boolean(chatContext);
+  const hasMemo = memo.trim().length > 0;
   const isPremiumTab = activeTab === "premium";
 
+  const answeredCount = Object.keys(behaviorAnswers).length;
+  const allBehaviorAnswered = answeredCount === BEHAVIOR_QUESTIONS.length;
+
   const canAnalyze = isPremiumTab
-    ? imageCount >= 1 && imageCount <= MAX_IMAGES_PREMIUM
-    : imageCount >= 1 && imageCount <= MAX_IMAGES_FREE;
+    ? imageCount >= 1 &&
+      imageCount <= MAX_IMAGES_PREMIUM &&
+      relationship !== null &&
+      allBehaviorAnswered
+    : imageCount >= 1 &&
+      imageCount <= MAX_IMAGES_FREE &&
+      relationship !== null &&
+      allBehaviorAnswered;
 
   useEffect(() => {
     (async () => {
@@ -129,10 +134,8 @@ export default function useAnalysis() {
     }
   }, []);
 
-  const toggleTag = useCallback((tag) => {
-    setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
-    );
+  const setBehaviorAnswer = useCallback((questionId, choice) => {
+    setBehaviorAnswers((prev) => ({ ...prev, [questionId]: choice }));
   }, []);
 
   const startLoading = useCallback(
@@ -213,9 +216,8 @@ export default function useAnalysis() {
           images: base64Images,
           paymentId,
           mode,
-          tags: selectedTags,
           relationship: relationship || undefined,
-          chatContext: chatContext || undefined,
+          behaviorAnswers,
         }),
       });
 
@@ -231,15 +233,7 @@ export default function useAnalysis() {
 
       return data;
     },
-    [
-      images,
-      targetName,
-      memo,
-      isPremiumTab,
-      selectedTags,
-      relationship,
-      chatContext,
-    ],
+    [images, targetName, memo, isPremiumTab, relationship, behaviorAnswers],
   );
 
   const requestAnalysis = useCallback(async () => {
@@ -329,9 +323,8 @@ export default function useAnalysis() {
     setImages([]);
     setTargetName("");
     setMemo("");
-    setSelectedTags([]);
     setRelationship(null);
-    setChatContext(null);
+    setBehaviorAnswers({});
     setError(null);
     setActiveTabState("free");
   }, [images]);
@@ -346,11 +339,11 @@ export default function useAnalysis() {
     images,
     targetName,
     memo,
-    selectedTags,
     relationship,
-    chatContext,
+    behaviorAnswers,
+    answeredCount,
+    allBehaviorAnswered,
     setRelationship,
-    setChatContext,
     loadingStep,
     result,
     freeCount,
@@ -369,7 +362,7 @@ export default function useAnalysis() {
     removeImage,
     setTargetName,
     setMemo,
-    toggleTag,
+    setBehaviorAnswer,
     requestAnalysis,
     onPaymentComplete,
     onPaymentCancel,

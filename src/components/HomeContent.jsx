@@ -5,6 +5,8 @@ import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import UploadCard from "@/components/UploadCard";
 import MemoCard from "@/components/MemoCard";
+import RelationshipSelect from "@/components/RelationshipSelect";
+import BehaviorQuestions from "@/components/BehaviorQuestions";
 import AnalyzeButton from "@/components/AnalyzeButton";
 import PaymentModal from "@/components/PaymentModal";
 import LoadingScreen from "@/components/LoadingScreen";
@@ -15,6 +17,8 @@ import usePayment from "@/hooks/usePayment";
 import { getDeviceId } from "@/lib/device-id";
 import {
   FREE_LIMIT,
+  MAX_IMAGES_FREE,
+  MAX_IMAGES_PREMIUM,
   MAX_IMAGES_SENT_PREMIUM,
   ANALYSIS_MODE,
   normalizeAnalysisMode,
@@ -259,6 +263,20 @@ export default function HomeContent() {
 
   const normalizedResult = normalizeResult(analysis.result);
 
+  const tierImagesOk = analysis.isDeepTab
+    ? analysis.imageCount >= 1 &&
+      analysis.imageCount <= MAX_IMAGES_PREMIUM
+    : analysis.imageCount >= 1 && analysis.imageCount <= MAX_IMAGES_FREE;
+
+  const analyzeFormHint =
+    analysis.stage === "main" &&
+    !analysis.isAnalysisBusy &&
+    tierImagesOk &&
+    !analysis.canAnalyze &&
+    (!analysis.relationship || !analysis.allBehaviorAnswered)
+      ? "관계 선택과 10개 문항에 모두 답해주세요"
+      : null;
+
   const loadingMode = analysis.isDeepTab
     ? ANALYSIS_MODE.PREMIUM
     : ANALYSIS_MODE.FREE;
@@ -310,15 +328,20 @@ export default function HomeContent() {
               }
             />
 
+            <RelationshipSelect
+              value={analysis.relationship}
+              onChange={analysis.setRelationship}
+            />
+
+            <BehaviorQuestions
+              relationship={analysis.relationship}
+              answers={analysis.behaviorAnswers}
+              onAnswer={analysis.setBehaviorAnswer}
+            />
+
             <MemoCard
               memo={analysis.memo}
               onMemoChange={analysis.setMemo}
-              selectedTags={analysis.selectedTags}
-              onToggleTag={analysis.toggleTag}
-              relationship={analysis.relationship}
-              onRelationshipChange={analysis.setRelationship}
-              chatContext={analysis.chatContext}
-              onChatContextChange={analysis.setChatContext}
               isDeep={analysis.isDeepTab}
             />
 
@@ -332,6 +355,9 @@ export default function HomeContent() {
               isLoading={analysis.isAnalysisBusy}
               isDeepTab={analysis.isDeepTab}
               memoLength={analysis.memo.trim().length}
+              relationshipOk={Boolean(analysis.relationship)}
+              behaviorOk={analysis.allBehaviorAnswered}
+              formIncompleteHint={analyzeFormHint}
             />
           </div>
         )}

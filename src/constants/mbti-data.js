@@ -40,6 +40,8 @@ export const RELATIONSHIP_OPTIONS = [
   { value: "lover", label: "연인" },
   { value: "coworker", label: "직장동료" },
   { value: "family", label: "가족" },
+  { value: "crush", label: "짝사랑" },
+  { value: "acquaintance", label: "지인/동호회" },
   { value: "other", label: "기타" },
 ];
 

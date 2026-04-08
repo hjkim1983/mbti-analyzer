@@ -1,10 +1,8 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 import { ANALYSIS_MODE } from "./analysis-tier";
-import {
-  getRelationshipLabel,
-  getContextLabel,
-} from "@/constants/mbti-data";
+import { getRelationshipLabel } from "@/constants/mbti-data";
+import { formatBehaviorAnswers } from "@/lib/format-behavior-answers";
 
 const MODEL = "gemini-2.5-flash";
 const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
@@ -49,7 +47,7 @@ ${skill}
 ## 분석 순서 (반드시 이 순서를 따를 것)
 1. 대상 인물의 말풍선과 입력 데이터를 식별한다.
 2. 관찰 가능한 언어·행동 신호를 최소 5개 추출한다.
-3. 제공된 맥락(관계, 대화 분위기, 태그, 메모)을 판별하고 분석에 반영한다.
+3. 제공된 맥락(관계, 행동 관찰 문항 요약, 메모)을 판별하고 분석에 반영한다.
 4. E/I, S/N, T/F, J/P 각 축에 대해 찬성·반대 근거를 함께 기술한다.
 5. 가장 유력한 MBTI 후보를 3개(rank 1~3) 제시한다(단일 확정 문구는 쓰지 않는다). 각 후보에 **confidence**(0~100, 해당 순위 추측 신뢰도, 1순위가 가장 높게)를 넣는다.
 6. **analysisExplanation**에 1~3순위를 이렇게 둔 이유(축·맥락·대화 신호)와 분석 한계를 4~8문장으로 서술한다. 애매한 축·오판 가능성은 boundaryNote·analysisLimitations에도 반영한다.
@@ -70,7 +68,7 @@ function buildFreeSystemPrompt() {
   return `카카오톡 캡처로 MBTI 후보와 축별 근거를 빠르게 추정하는 심리언어학 분석 에이전트입니다.
 
 ## 분석 순서
-1. 말풍선·프로필·맥락 식별 → 2. 관찰 신호 5개 이상 → 3. 맥락(관계·분위기·태그) 반영
+1. 말풍선·프로필·맥락 식별 → 2. 관찰 신호 5개 이상 → 3. 맥락(관계·행동 문항 요약) 반영
 4. 4축 각각 찬성·반대 근거 → 5. 후보 MBTI 3개(순위별 confidence 포함) → 6. analysisExplanation(순위 선정 이유+한계) → 7. 한계·오판 요인
 
 ## 규칙
@@ -84,39 +82,33 @@ function buildFreeSystemPrompt() {
 }
 
 /**
- * 관계·대화 맥락 — 프롬프트에만 주입 (검증은 API 라우트에서 화이트리스트)
+ * 관계 — 프롬프트에만 주입 (검증은 API 라우트에서 화이트리스트)
  */
-function buildContextHint(relationship, chatContext) {
+function buildContextHint(relationship) {
   const rel = relationship ? getRelationshipLabel(relationship) : "";
-  const ctx = chatContext ? getContextLabel(chatContext) : "";
-  if (!rel && !ctx) return "";
-  if (rel && ctx) {
-    return `\n\n## 맥락\n이 대화는 **${rel}** 관계에서의 **${ctx}** 맥락으로 가정합니다. 업무 맥락에서는 평소 F도 T처럼 보일 수 있으니 맥락을 고려하세요.`;
-  }
-  if (rel) {
-    return `\n\n## 맥락\n관계: **${rel}**. 맥락에 따라 E/I·T/F 해석이 달라질 수 있습니다.`;
-  }
-  return `\n\n## 맥락\n대화 분위기: **${ctx}**. 업무 맥락에서는 평소 F도 T처럼 보일 수 있습니다.`;
+  if (!rel) return "";
+  return `\n\n## 맥락\n관계: **${rel}**. 맥락에 따라 E/I·T/F 해석이 달라질 수 있습니다.`;
 }
 
 function buildPremiumUserParts({
   targetName,
   memo,
   images,
-  tags,
   relationship,
-  chatContext,
+  behaviorFormatted,
 }) {
-  const tagList = Array.isArray(tags)
-    ? tags.map((t) => String(t).trim()).filter(Boolean)
-    : [];
+  const behaviorBlock =
+    behaviorFormatted && behaviorFormatted.trim()
+      ? `\n\n## [D] 관찰자 행동 문항 요약\n관찰자가 선택한 경향입니다. 대화 캡처와 함께 참고하되, 모순되면 대화·이미지를 우선하세요.\n\n${behaviorFormatted}`
+      : "";
 
   const parts = [];
   parts.push({
     text:
       `## 분석 대상: ${targetName || "미지정"}\n` +
       `이미지에서 [A] 대화·[B] 프로필을 구분해 이 사람의 MBTI를 분석하세요.` +
-      buildContextHint(relationship, chatContext),
+      buildContextHint(relationship) +
+      behaviorBlock,
   });
 
   for (const img of images) {
@@ -128,12 +120,6 @@ function buildPremiumUserParts({
     });
   }
 
-  if (tagList.length > 0) {
-    parts.push({
-      text: `\n## 관찰자 행동 태그\n${tagList.join(" · ")}`,
-    });
-  }
-
   if (memo && memo.trim()) {
     parts.push({
       text: `\n## [C] 행동/성격 텍스트 (관찰자 입력, 선택)\n${memo}`,
@@ -142,16 +128,27 @@ function buildPremiumUserParts({
 
   const hasImages = images.length > 0;
   const hasMemo = memo && memo.trim().length > 0;
+  const hasD = Boolean(behaviorFormatted && behaviorFormatted.trim());
   let weightGuide = "";
-  if (hasImages && hasMemo) {
+  if (hasImages && hasMemo && hasD) {
+    weightGuide =
+      "가중치: [A] 카카오톡 대화 42%, [B] 프로필 사진 13%, [C] 행동/성격 텍스트 30%, [D] 행동 문항 요약 15%";
+  } else if (hasImages && hasMemo && !hasD) {
     weightGuide =
       "가중치: [A] 카카오톡 대화 50%, [B] 프로필 사진 15%, [C] 행동/성격 텍스트 35%";
-  } else if (hasImages && !hasMemo) {
+  } else if (hasImages && !hasMemo && hasD) {
     weightGuide =
-      "가중치: [A] 카카오톡 대화 65%, [B] 프로필 사진 35% ([C] 없음)";
+      "가중치: [A] 카카오톡 대화 58%, [B] 프로필 사진 22%, [D] 행동 문항 요약 20% ([C] 없음)";
+  } else if (hasImages && !hasMemo && !hasD) {
+    weightGuide =
+      "가중치: [A] 카카오톡 대화 65%, [B] 프로필 사진 35% ([C][D] 없음)";
   } else if (!hasImages && hasMemo) {
     weightGuide =
       "가중치: [C] 행동/성격 텍스트 100% (단, 신뢰도 LOW로 고정)";
+  }
+  if (!weightGuide) {
+    weightGuide =
+      "가중치: 이미지·텍스트·행동 문항 요약을 균형 있게 참고하세요.";
   }
 
   parts.push({ text: `\n## 가중치\n${weightGuide}` });
@@ -203,23 +200,22 @@ function buildPremiumUserParts({
 function buildFreeUserParts({
   targetName,
   images,
-  tags,
   relationship,
-  chatContext,
+  behaviorFormatted,
 }) {
   const parts = [];
-  const tagList = Array.isArray(tags)
-    ? tags.map((t) => String(t).trim()).filter(Boolean)
-    : [];
+  const behaviorBlock =
+    behaviorFormatted && behaviorFormatted.trim()
+      ? `\n\n## 관찰자 행동 문항 요약 (참고)\n${behaviorFormatted}`
+      : "";
+
   parts.push({
     text:
       `## 분석 대상\n이름: ${targetName || "미지정"}\n\n` +
       `무료 빠른 추정: 캡처 이미지로 MBTI 방향과 짧은 요약만 제공합니다.\n\n` +
       `이미지에서 대화와 프로필을 구분해 참고하세요.` +
-      buildContextHint(relationship, chatContext) +
-      (tagList.length > 0
-        ? `\n\n## 관찰자 행동 태그 (참고)\n${tagList.join(" · ")}`
-        : ""),
+      buildContextHint(relationship) +
+      behaviorBlock,
   });
 
   for (const img of images) {
@@ -384,9 +380,8 @@ async function postGemini(body) {
 async function callGeminiFree({
   targetName,
   images,
-  tags,
   relationship,
-  chatContext,
+  behaviorFormatted,
 }) {
   const body = {
     system_instruction: {
@@ -398,9 +393,8 @@ async function callGeminiFree({
         parts: buildFreeUserParts({
           targetName,
           images,
-          tags,
           relationship,
-          chatContext,
+          behaviorFormatted,
         }),
       },
     ],
@@ -427,9 +421,8 @@ async function callGeminiPremium({
   targetName,
   memo,
   images,
-  tags,
   relationship,
-  chatContext,
+  behaviorFormatted,
 }) {
   const body = {
     system_instruction: {
@@ -442,9 +435,8 @@ async function callGeminiPremium({
           targetName,
           memo,
           images,
-          tags,
           relationship,
-          chatContext,
+          behaviorFormatted,
         }),
       },
     ],
@@ -468,33 +460,30 @@ async function callGeminiPremium({
 }
 
 /**
- * @param {{ targetName?: string, memo?: string, images: Array, mode?: string, tags?: string[], relationship?: string|null, chatContext?: string|null }} opts
+ * @param {{ targetName?: string, memo?: string, images: Array, mode?: string, relationship?: string|null, behaviorAnswers?: Record<string, string> }} opts
  */
 export async function callGemini({
   targetName,
   memo,
   images,
   mode = ANALYSIS_MODE.FREE,
-  tags,
   relationship,
-  chatContext,
+  behaviorAnswers,
 }) {
-  const tagArr = Array.isArray(tags) ? tags : [];
+  const behaviorFormatted = formatBehaviorAnswers(behaviorAnswers || {});
   if (mode === ANALYSIS_MODE.PREMIUM) {
     return callGeminiPremium({
       targetName,
       memo: (memo && String(memo).trim()) || "",
       images: images || [],
-      tags: tagArr,
       relationship: relationship || null,
-      chatContext: chatContext || null,
+      behaviorFormatted,
     });
   }
   return callGeminiFree({
     targetName,
     images: images || [],
-    tags: tagArr,
     relationship: relationship || null,
-    chatContext: chatContext || null,
+    behaviorFormatted,
   });
 }
