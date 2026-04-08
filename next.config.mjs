@@ -1,10 +1,40 @@
 /** @type {import('next').NextConfig} */
+const isDev = process.env.NODE_ENV === "development";
+
 const nextConfig = {
   /**
    * 브라우저 기본 요청 `/favicon.ico`가 404가 나지 않도록 SVG 파비콘으로 연결합니다.
    */
   async rewrites() {
     return [{ source: "/favicon.ico", destination: "/favicon.svg" }];
+  },
+  /**
+   * `next dev` 전용: React/Webpack HMR이 eval을 쓰는 경로가 있어,
+   * script-src에 'unsafe-eval'이 없으면 DevTools에 CSP 위반이 뜹니다.
+   * 프로덕션(`next build` / `next start`)에서는 이 헤더를 붙이지 않습니다.
+   *
+   * 배포 환경(Vercel 대시보드 등)에서 별도 CSP를 쓰는 경우, 정책이 **교차(AND)** 되면
+   * 여전히 차단될 수 있으니 프리뷰/로컬용으로 script-src에 'unsafe-eval'을 넣거나
+   * 개발 호스트에서는 CSP를 끄는 것을 검토하세요.
+   */
+  async headers() {
+    if (!isDev) return [];
+    const devCsp = [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline' blob:",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https:",
+      "font-src 'self' data:",
+      "connect-src 'self' https: http: ws: wss:",
+      "frame-ancestors 'self'",
+      "base-uri 'self'",
+    ].join("; ");
+    return [
+      {
+        source: "/:path*",
+        headers: [{ key: "Content-Security-Policy", value: devCsp }],
+      },
+    ];
   },
   /**
    * 개발 중 기본 Webpack 소스맵(eval-*)은 `eval()`을 쓰므로,
