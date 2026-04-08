@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import GlassCard from "./GlassCard";
 import { getMbtiMeta } from "@/constants/mbti-data";
 import {
@@ -26,6 +27,13 @@ const AXIS_LABELS = {
   TF: ["T 사고", "F 감정"],
   JP: ["J 판단", "P 인식"],
 };
+/** 접힌 상태 카드 제목 — 사용자 요청 형식 (E vs. I) */
+const AXIS_COMPACT_TITLE = {
+  EI: "E vs. I",
+  SN: "S vs. N",
+  TF: "T vs. F",
+  JP: "J vs. P",
+};
 
 export default function ResultScreen({
   result,
@@ -37,6 +45,10 @@ export default function ResultScreen({
   analysisMode = ANALYSIS_MODE.FREE,
   onGoPremium,
 }) {
+  const [axisExpanded, setAxisExpanded] = useState(() =>
+    Object.fromEntries(AXIS_ORDER.map((k) => [k, false])),
+  );
+
   if (!result) return null;
 
   const {
@@ -313,79 +325,125 @@ export default function ResultScreen({
                 const againstList = Array.isArray(ax.againstEvidence)
                   ? ax.againstEvidence
                   : [];
+                const open = !!axisExpanded[key];
+                const panelId = `axis-panel-${key}`;
+                const compactTitle =
+                  AXIS_COMPACT_TITLE[key] ?? `${key[0]} vs. ${key[1]}`;
 
                 return (
                   <GlassCard
                     key={key}
                     animate
-                    className="!p-5 border border-white/50 bg-white/35"
+                    className="!p-0 overflow-hidden border border-white/50 bg-white/35"
                   >
-                    <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-                      <p className="text-base font-extrabold text-gray-900 leading-snug">
-                        <span
-                          style={{ color: leftWins ? color : "#9CA3AF" }}
+                    <button
+                      type="button"
+                      id={`axis-trigger-${key}`}
+                      aria-expanded={open}
+                      aria-controls={panelId}
+                      onClick={() =>
+                        setAxisExpanded((prev) => ({
+                          ...prev,
+                          [key]: !prev[key],
+                        }))
+                      }
+                      className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left rounded-[inherit] hover:bg-white/25 active:bg-white/35 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className="text-base font-extrabold leading-snug"
+                          style={{ color }}
                         >
-                          {leftL}
-                        </span>
-                        <span className="text-gray-400 font-normal mx-1.5">
-                          /
-                        </span>
-                        <span
-                          style={{ color: !leftWins ? color : "#9CA3AF" }}
-                        >
-                          {rightL}
-                        </span>
-                      </p>
-                      {ambiguous && (
-                        <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-900">
-                          판단 애매
-                        </span>
-                      )}
-                    </div>
-                    <div className="h-2 bg-gray-100/80 rounded-full overflow-hidden mb-3.5">
-                      <div
-                        className="h-full rounded-full transition-all duration-700"
-                        style={{
-                          width: `${conf}%`,
-                          background: `linear-gradient(90deg,${color}88,${color})`,
-                        }}
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 mb-4 leading-relaxed">
-                      이 축 판단 강도 약 {conf}%
-                    </p>
-                    {forList.length > 0 && (
-                      <div className="mb-5 last:mb-0">
-                        <p className="text-xs font-bold text-emerald-800 mb-2.5 tracking-wide">
-                          찬성 근거
+                          {compactTitle}
                         </p>
-                        <ul className="space-y-3.5">
-                          {forList.map((t, i) => (
-                            <li
-                              key={i}
-                              className="text-sm text-gray-700 pl-3 py-0.5 border-l-[3px] border-emerald-200 leading-relaxed"
-                            >
-                              ✅ {String(t)}
-                            </li>
-                          ))}
-                        </ul>
+                        <p className="text-[11px] text-gray-500 mt-1">
+                          {open
+                            ? "탭하여 접기"
+                            : `${win} 쪽 우세 · 강도 약 ${conf}% · 탭하여 상세 보기`}
+                        </p>
                       </div>
-                    )}
-                    {againstList.length > 0 && (
-                      <div>
-                        <p className="text-xs font-bold text-amber-900 mb-2.5 tracking-wide">
-                          반대·예외 근거
-                        </p>
-                        <ul className="space-y-3.5">
-                          {againstList.map((t, i) => (
-                            <li
-                              key={i}
-                              className="text-sm text-gray-600 pl-3 py-0.5 border-l-[3px] border-amber-200 leading-relaxed"
+                      <span
+                        className="shrink-0 text-gray-400 text-lg font-bold w-8 text-center select-none"
+                        aria-hidden
+                      >
+                        {open ? "▲" : "▼"}
+                      </span>
+                    </button>
+                    {open && (
+                      <div
+                        id={panelId}
+                        role="region"
+                        aria-labelledby={`axis-trigger-${key}`}
+                        className="px-5 pb-5 pt-0 border-t border-white/40"
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-3 flex-wrap pt-4">
+                          <p className="text-base font-extrabold text-gray-900 leading-snug">
+                            <span
+                              style={{ color: leftWins ? color : "#9CA3AF" }}
                             >
-                              ⚠️ {String(t)}
-                            </li>
-                          ))}
-                        </ul>
+                              {leftL}
+                            </span>
+                            <span className="text-gray-400 font-normal mx-1.5">
+                              /
+                            </span>
+                            <span
+                              style={{ color: !leftWins ? color : "#9CA3AF" }}
+                            >
+                              {rightL}
+                            </span>
+                          </p>
+                          {ambiguous && (
+                            <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-900">
+                              판단 애매
+                            </span>
+                          )}
+                        </div>
+                        <div className="h-2 bg-gray-100/80 rounded-full overflow-hidden mb-3.5">
+                          <div
+                            className="h-full rounded-full transition-all duration-700"
+                            style={{
+                              width: `${conf}%`,
+                              background: `linear-gradient(90deg,${color}88,${color})`,
+                            }}
+                          />
+                        </div>
+                        <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+                          이 축 판단 강도 약 {conf}%
+                        </p>
+                        {forList.length > 0 && (
+                          <div className="mb-5 last:mb-0">
+                            <p className="text-xs font-bold text-emerald-800 mb-2.5 tracking-wide">
+                              찬성 근거
+                            </p>
+                            <ul className="space-y-3.5">
+                              {forList.map((t, i) => (
+                                <li
+                                  key={i}
+                                  className="text-sm text-gray-700 pl-3 py-0.5 border-l-[3px] border-emerald-200 leading-relaxed"
+                                >
+                                  ✅ {String(t)}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {againstList.length > 0 && (
+                          <div>
+                            <p className="text-xs font-bold text-amber-900 mb-2.5 tracking-wide">
+                              반대·예외 근거
+                            </p>
+                            <ul className="space-y-3.5">
+                              {againstList.map((t, i) => (
+                                <li
+                                  key={i}
+                                  className="text-sm text-gray-600 pl-3 py-0.5 border-l-[3px] border-amber-200 leading-relaxed"
+                                >
+                                  ⚠️ {String(t)}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
                       </div>
                     )}
                   </GlassCard>
