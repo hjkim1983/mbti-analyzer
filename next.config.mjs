@@ -1,6 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   /**
+   * 브라우저 기본 요청 `/favicon.ico`가 404가 나지 않도록 SVG 파비콘으로 연결합니다.
+   */
+  async rewrites() {
+    return [{ source: "/favicon.ico", destination: "/favicon.svg" }];
+  },
+  /**
    * 개발 중 기본 Webpack 소스맵(eval-*)은 `eval()`을 쓰므로,
    * 엄격한 CSP(script-src에 unsafe-eval 없음)와 충돌할 수 있음.
    * 클라이언트 dev 번들만 eval 없는 소스맵으로 전환.

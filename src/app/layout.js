@@ -26,6 +26,7 @@ export default function RootLayout({ children }) {
         <meta property="og:url" content={siteUrl} />
         <meta property="og:type" content="website" />
         <link rel="canonical" href={siteUrl} />
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
       </head>
       <body suppressHydrationWarning>{children}</body>
     </html>
