@@ -6,10 +6,14 @@ import { formatBehaviorAnswers } from "@/lib/format-behavior-answers";
 
 const MODEL = "gemini-2.5-flash";
 const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
-const TIMEOUT_MS = 55000;
+/** API 라우트 maxDuration(60s)보다 짧게 — 긴 JSON 생성 시 여유 */
+const TIMEOUT_MS = 58000;
 
-/** 프리미엄: JSON 한도 — 불필요하게 긴 리포트 생성 방지(속도·비용) */
-const PREMIUM_MAX_OUTPUT_TOKENS = 5632;
+/**
+ * 프리미엄: 한국어+긴 인용·축별 근거 시 5632 등에서는 MAX_TOKENS로 JSON이 중간에 끊김.
+ * gemini-2.5-flash 는 충분히 높은 출력 한도를 지원.
+ */
+const PREMIUM_MAX_OUTPUT_TOKENS = 16384;
 
 /** 무료: 짧은 스키마면 충분 */
 const FREE_MAX_OUTPUT_TOKENS = 1536;
@@ -50,11 +54,11 @@ ${skill}
 3. 제공된 맥락(관계, 행동 관찰 문항 요약, 메모)을 판별하고 분석에 반영한다.
 4. E/I, S/N, T/F, J/P 각 축에 대해 찬성·반대 근거를 함께 기술한다.
 5. 가장 유력한 MBTI 후보를 3개(rank 1~3) 제시한다(단일 확정 문구는 쓰지 않는다). 각 후보에 **confidence**(0~100, 해당 순위 추측 신뢰도, 1순위가 가장 높게)를 넣는다.
-6. **analysisExplanation**에 1~3순위를 이렇게 둔 이유(축·맥락·대화 신호)와 분석 한계를 4~8문장으로 서술한다. 애매한 축·오판 가능성은 boundaryNote·analysisLimitations에도 반영한다.
+6. **analysisExplanation**에 1~3순위 이유·한계를 **6문장 이내**로 서술한다(토큰 한도로 JSON이 잘리지 않게). 애매한 축은 boundaryNote·analysisLimitations에 반영한다.
 
 ## 핵심 규칙
 - 한 가지 MBTI만 확정하지 말고 후보 2~3개를 제시한다.
-- 각 축마다 찬성 근거(forEvidence)와 반대 근거(againstEvidence)를 함께 적는다.
+- 각 축마다 찬성·반대 근거를 **항목당 한 문장** 수준으로 간결히 적는다(장문 인용 금지).
 - 프로필 이미지는 보조 신호로만 쓴다.
 - 관찰자 메모가 인상 평가 위주면 가중치를 낮춘다고 boundaryNote에 적는다.
 - 업무 맥락에서는 T/F·J/P 판단에 특히 유의한다.
@@ -164,25 +168,25 @@ function buildPremiumUserParts({
   "confidence": 60,
   "confidenceLevel": "MEDIUM",
   "confidenceReason": "한 줄",
-  "observedFeatures": ["관찰 문장 5개 이상"],
+  "observedFeatures": ["관찰 5~6개, 각 1문장"],
   "axisAnalysis": {
-    "EI": { "result": "E|I", "confidence": 0-100, "forEvidence": ["…"], "againstEvidence": ["…"] },
+    "EI": { "result": "E|I", "confidence": 0-100, "forEvidence": ["한 줄씩"], "againstEvidence": ["한 줄씩"] },
     "SN": { "result": "S|N", "confidence": 0-100, "forEvidence": [], "againstEvidence": [] },
     "TF": { "result": "T|F", "confidence": 0-100, "forEvidence": [], "againstEvidence": [] },
     "JP": { "result": "J|P", "confidence": 0-100, "forEvidence": [], "againstEvidence": [] }
   },
   "candidateTypes": [
-    { "type": "XXXX", "rank": 1, "confidence": 60, "reason": "이 순위인 근거(2~4문장)" },
+    { "type": "XXXX", "rank": 1, "confidence": 60, "reason": "근거 2문장 이내" },
     { "type": "YYYY", "rank": 2, "confidence": 48, "reason": "…" },
     { "type": "ZZZZ", "rank": 3, "confidence": 38, "reason": "…" }
   ],
-  "analysisExplanation": "1~3순위 선정 이유와 분석 한계를 함께 서술(4~8문장)",
+  "analysisExplanation": "선정 이유+한계, 6문장 이내",
   "boundaryNote": "가장 애매한 축·맥락 요인",
   "analysisLimitations": "문자열 한 덩어리(데이터 부족·단일 상대 등)",
   "communicationTips": ["팁1", "팁2", "팁3"],
   "profileImageNote": "프로필·배경 보조 신호(없으면 빈 문자열)",
   "oneLineConclusion": "한 줄 결론",
-  "keyEvidenceSummary": [{ "snippet": "짧게", "axis": "EI", "insight": "해석" }],
+  "keyEvidenceSummary": [{ "snippet": "한 줄", "axis": "EI", "insight": "한 줄" }],
   "practicalTips": ["실전 팁"],
   "workAndRoutine": { "summary": "", "tips": [] },
   "relationshipAndCommunication": { "summary": "", "tips": [] },
@@ -191,7 +195,9 @@ function buildPremiumUserParts({
   "tags": ["#태그"]
 }
 
-축 confidence는 해당 축 판단 강도(0~100). 후보 3개 type은 서로 다르게. 후보별 confidence는 루트 confidence와 조화(1순위 ≥ 2순위 ≥ 3순위). 빈 값 null/[].`,
+축 confidence는 해당 축 판단 강도(0~100). 후보 3개 type은 서로 다르게. 후보별 confidence는 루트 confidence와 조화(1순위 ≥ 2순위 ≥ 3순위). 빈 값 null/[].
+
+**중요**: 응답이 출력 한도로 잘리면 JSON이 무효가 됩니다. 인용은 최소화하고, 축별 근거·후보 reason·keyEvidenceSummary(최대 5개)는 짧게 유지하세요. workAndRoutine 등 긴 필드도 요약 위주.`,
   });
 
   return parts;
