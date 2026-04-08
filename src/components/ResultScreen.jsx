@@ -289,8 +289,8 @@ export default function ResultScreen({
           {/* 2. 축별 근거 카드 */}
           {axisForCards &&
             AXIS_ORDER.some((k) => axisForCards[k]) && (
-            <div className="space-y-3">
-              <p className="text-[11px] font-bold text-gray-500 px-1">
+            <div className="space-y-4">
+              <p className="text-xs font-bold text-gray-500 px-1 leading-relaxed">
                 네 가지 성향 축 — 찬성·반대 근거
               </p>
               {AXIS_ORDER.map((key) => {
@@ -318,10 +318,10 @@ export default function ResultScreen({
                   <GlassCard
                     key={key}
                     animate
-                    className="!p-4 border border-white/50 bg-white/35"
+                    className="!p-5 border border-white/50 bg-white/35"
                   >
-                    <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
-                      <p className="text-sm font-extrabold text-gray-900">
+                    <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+                      <p className="text-base font-extrabold text-gray-900 leading-snug">
                         <span
                           style={{ color: leftWins ? color : "#9CA3AF" }}
                         >
@@ -337,12 +337,12 @@ export default function ResultScreen({
                         </span>
                       </p>
                       {ambiguous && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">
+                        <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-900">
                           판단 애매
                         </span>
                       )}
                     </div>
-                    <div className="h-2 bg-gray-100/80 rounded-full overflow-hidden mb-3">
+                    <div className="h-2 bg-gray-100/80 rounded-full overflow-hidden mb-3.5">
                       <div
                         className="h-full rounded-full transition-all duration-700"
                         style={{
@@ -351,19 +351,19 @@ export default function ResultScreen({
                         }}
                       />
                     </div>
-                    <p className="text-[10px] text-gray-500 mb-2">
+                    <p className="text-xs text-gray-500 mb-4 leading-relaxed">
                       이 축 판단 강도 약 {conf}%
                     </p>
                     {forList.length > 0 && (
-                      <div className="mb-2">
-                        <p className="text-[10px] font-bold text-emerald-800 mb-1">
+                      <div className="mb-5 last:mb-0">
+                        <p className="text-xs font-bold text-emerald-800 mb-2.5 tracking-wide">
                           찬성 근거
                         </p>
-                        <ul className="space-y-1">
+                        <ul className="space-y-3.5">
                           {forList.map((t, i) => (
                             <li
                               key={i}
-                              className="text-xs text-gray-700 pl-1 border-l-2 border-emerald-200"
+                              className="text-sm text-gray-700 pl-3 py-0.5 border-l-[3px] border-emerald-200 leading-relaxed"
                             >
                               ✅ {String(t)}
                             </li>
@@ -373,14 +373,14 @@ export default function ResultScreen({
                     )}
                     {againstList.length > 0 && (
                       <div>
-                        <p className="text-[10px] font-bold text-amber-900 mb-1">
+                        <p className="text-xs font-bold text-amber-900 mb-2.5 tracking-wide">
                           반대·예외 근거
                         </p>
-                        <ul className="space-y-1">
+                        <ul className="space-y-3.5">
                           {againstList.map((t, i) => (
                             <li
                               key={i}
-                              className="text-xs text-gray-600 pl-1 border-l-2 border-amber-200"
+                              className="text-sm text-gray-600 pl-3 py-0.5 border-l-[3px] border-amber-200 leading-relaxed"
                             >
                               ⚠️ {String(t)}
                             </li>
