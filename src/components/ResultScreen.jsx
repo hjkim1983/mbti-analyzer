@@ -535,9 +535,9 @@ export default function ResultScreen({
             </p>
           )}
 
-          {/* 8. 축소 MBTI 카드 */}
+          {/* 8. 축소 MBTI 카드 — 위 GlassCard·후보 박스와 동일 가로 폭 */}
           <div
-            className="rounded-2xl overflow-hidden shadow-md max-w-xs mx-auto border anim-slide-up"
+            className="rounded-2xl overflow-hidden shadow-md w-full border anim-slide-up"
             style={{
               background: `linear-gradient(135deg,${color}18,${color}33)`,
               borderColor: `${color}44`,
