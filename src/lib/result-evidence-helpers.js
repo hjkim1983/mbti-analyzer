@@ -75,6 +75,65 @@ export function resolveCandidateRows(
 }
 
 /**
+ * LLM이 forEvidence[0]에 뒤 항목들을 합친 요약을 넣고, 동일 인용·관찰을 반복하는 경우가 많음.
+ * (1) 한 줄이 다른 두 줄 이상을 부분 문자열로 포함하면 그 줄(요약) 제거
+ * (2) 남은 줄 중 짧은 줄이 긴 줄에 완전 포함되면 짧은 줄 제거
+ */
+export function dedupeOverlappingEvidenceLines(lines) {
+  const raw = (Array.isArray(lines) ? lines : [])
+    .map((x) => String(x).trim())
+    .filter(Boolean);
+  if (raw.length <= 1) return raw;
+
+  const norm = (s) =>
+    s.replace(/\*{2,}/g, "").replace(/\s+/g, " ").trim();
+
+  const n = raw.length;
+  const removedAgg = new Set();
+
+  for (let i = 0; i < n; i++) {
+    const ni = norm(raw[i]);
+    if (ni.length < 35) continue;
+    let subCount = 0;
+    for (let j = 0; j < n; j++) {
+      if (i === j) continue;
+      const nj = norm(raw[j]);
+      if (nj.length < 14) continue;
+      if (ni.includes(nj)) subCount += 1;
+    }
+    if (subCount >= 2) removedAgg.add(i);
+  }
+
+  const idxKept = [...Array(n).keys()].filter((i) => !removedAgg.has(i));
+  if (idxKept.length === 0) return raw;
+
+  const normOf = (idx) => norm(raw[idx]);
+  const entries = idxKept.map((i) => ({ i, s: normOf(i) }));
+  entries.sort((a, b) => b.s.length - a.s.length);
+
+  const survivors = [];
+  for (const { i, s } of entries) {
+    if (s.length < 10) {
+      survivors.push(i);
+      continue;
+    }
+    let isRedundant = false;
+    for (const j of survivors) {
+      const ns = normOf(j);
+      if (ns.length > s.length + 5 && ns.includes(s)) {
+        isRedundant = true;
+        break;
+      }
+    }
+    if (!isRedundant) survivors.push(i);
+  }
+
+  survivors.sort((a, b) => a - b);
+  const out = survivors.map((i) => raw[i]);
+  return out.length > 0 ? out : raw;
+}
+
+/**
  * API axisAnalysis 없을 때 indicators → axisAnalysis 형태로 변환
  */
 export function legacyIndicatorsToAxisAnalysis(indicators) {
@@ -90,17 +149,19 @@ export function legacyIndicatorsToAxisAnalysis(indicators) {
       : [];
     const interp = ind.interpretation ? String(ind.interpretation).trim() : "";
     const bNote = ind.boundaryNote ? String(ind.boundaryNote).trim() : "";
-    const forEvidence = [
+    const combinedFor = [
       ...(interp ? [interp] : []),
       ...ev.filter(Boolean).slice(0, 4),
     ];
-    const againstEvidence = bNote ? [bNote] : [];
+    const dedupedFor = dedupeOverlappingEvidenceLines(combinedFor);
+    const forEvidence = dedupedFor.length ? dedupedFor : ["(세부 근거 없음)"];
+    const againstEvidence = bNote ? dedupeOverlappingEvidenceLines([bNote]) : [];
     let letter = String(ind.result ?? k[0]).trim().toUpperCase().slice(0, 1);
     if (letter !== k[0] && letter !== k[1]) letter = k[0];
     out[k] = {
       result: letter,
       confidence: Number.isFinite(conf) ? Math.min(100, Math.max(0, conf)) : 60,
-      forEvidence: forEvidence.length ? forEvidence : ["(세부 근거 없음)"],
+      forEvidence,
       againstEvidence,
     };
   }

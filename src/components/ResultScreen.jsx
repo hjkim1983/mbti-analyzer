@@ -19,6 +19,7 @@ import {
   shouldUseEvidenceLayout,
   flattenLimitationLines,
   normalizeMbtiCode,
+  dedupeOverlappingEvidenceLines,
 } from "@/lib/result-evidence-helpers";
 
 const AXIS_ORDER = ["EI", "SN", "TF", "JP"];
@@ -615,12 +616,12 @@ export default function ResultScreen({
                   Math.max(0, Number(ax.confidence) || 0),
                 );
                 const ambiguous = conf < 65;
-                const forList = Array.isArray(ax.forEvidence)
-                  ? ax.forEvidence
-                  : [];
-                const againstList = Array.isArray(ax.againstEvidence)
-                  ? ax.againstEvidence
-                  : [];
+                const forList = dedupeOverlappingEvidenceLines(
+                  Array.isArray(ax.forEvidence) ? ax.forEvidence : [],
+                );
+                const againstList = dedupeOverlappingEvidenceLines(
+                  Array.isArray(ax.againstEvidence) ? ax.againstEvidence : [],
+                );
                 const { forDisplay, againstDisplay } = partitionAxisEvidence(
                   forList,
                   againstList,
