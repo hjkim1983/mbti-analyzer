@@ -36,3 +36,11 @@ export function getLoadingSteps(
         : "분석 중이에요",
   };
 }
+
+/**
+ * 로딩 화면 «줄어드는 막대»용 예상 시간(ms).
+ * 실제 API 응답과 무관하며, 체감 대기 완화용 시각 피드백만 제공.
+ */
+export function getLoadingEstimateMs(mode = ANALYSIS_MODE.FREE) {
+  return mode === ANALYSIS_MODE.PREMIUM ? 56000 : 28000;
+}
