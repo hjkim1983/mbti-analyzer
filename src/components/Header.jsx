@@ -1,33 +1,45 @@
 "use client";
 
-export default function Header({ freeRemaining }) {
+/**
+ * @param {{ freeRemaining?: number | null, onGoHome?: () => void }} props
+ */
+export default function Header({ freeRemaining: _freeRemaining, onGoHome }) {
   return (
     <header className="glass-header sticky top-0 z-10">
       <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-2">
-        <div
-          className="w-8 h-8 rounded-xl flex items-center justify-center"
-          style={{ background: "#FEE500" }}
-        >
-          <span className="text-sm">💬</span>
-        </div>
-        <span className="font-bold text-gray-900 text-sm">
-          카톡 MBTI 스캐너
-        </span>
-
-        {freeRemaining != null && freeRemaining > 0 && (
-          <span className="ml-auto text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
-            무료 {freeRemaining}회 남음
-          </span>
-        )}
-        {freeRemaining != null && freeRemaining <= 0 && (
-          <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-            유료 모드
-          </span>
-        )}
-        {freeRemaining == null && (
-          <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-            BETA
-          </span>
+        {onGoHome ? (
+          <button
+            type="button"
+            onClick={() => {
+              onGoHome();
+              window.scrollTo(0, 0);
+            }}
+            className="flex items-center gap-2 min-w-0 rounded-xl px-1 -mx-1 py-0.5 text-left transition-opacity hover:opacity-85 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 focus-visible:ring-offset-2"
+            aria-label="처음 화면으로 이동"
+          >
+            <span
+              className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: "#FEE500" }}
+              aria-hidden
+            >
+              <span className="text-sm">💬</span>
+            </span>
+            <span className="font-bold text-gray-900 text-sm truncate">
+              카톡 MBTI 스캐너
+            </span>
+          </button>
+        ) : (
+          <>
+            <div
+              className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: "#FEE500" }}
+            >
+              <span className="text-sm">💬</span>
+            </div>
+            <span className="font-bold text-gray-900 text-sm">
+              카톡 MBTI 스캐너
+            </span>
+          </>
         )}
       </div>
     </header>

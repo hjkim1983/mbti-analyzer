@@ -301,7 +301,7 @@ export default function HomeContent() {
         useWarmShell ? "min-h-screen mbti-warm-shell" : "min-h-screen"
       }
     >
-      <Header freeRemaining={freeRemaining} />
+      <Header freeRemaining={freeRemaining} onGoHome={analysis.reset} />
 
       <main className="max-w-lg mx-auto px-4 pb-24 relative">
         {isDevModeClient() && (

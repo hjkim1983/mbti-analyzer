@@ -47,6 +47,8 @@ export default function useAnalysis() {
   const [geminiErrorDetail, setGeminiErrorDetail] = useState(null);
   const [isChecking, setIsChecking] = useState(false);
   const timerRef = useRef(null);
+  /** 로고·처음으로 이동 시 진행 중 분석 응답이 늦게 도착해 화면을 덮어쓰지 않도록 */
+  const loadingSessionRef = useRef(0);
 
   const imageCount = images.length;
   const maxImages =
@@ -150,6 +152,8 @@ export default function useAnalysis() {
 
   /** 티어 선택 화면으로 — 폼 초기화 */
   const backToTierPick = useCallback(() => {
+    loadingSessionRef.current += 1;
+    clearInterval(timerRef.current);
     setError(null);
     setGeminiErrorDetail(null);
     images.forEach((img) => {
@@ -170,6 +174,7 @@ export default function useAnalysis() {
 
   const startLoading = useCallback(
     (apiPromise) => {
+      const sessionAtLoad = ++loadingSessionRef.current;
       setStage("loading");
       setLoadingStep(0);
 
@@ -190,12 +195,14 @@ export default function useAnalysis() {
       apiPromise
         .then((data) => {
           clearInterval(timerRef.current);
+          if (sessionAtLoad !== loadingSessionRef.current) return;
 
           if (!data) return;
 
           setLoadingStep(messages.length);
 
           setTimeout(() => {
+            if (sessionAtLoad !== loadingSessionRef.current) return;
             setResult(data);
             if (data.freeCount) setFreeCount(data.freeCount);
             setStage("result");
@@ -203,6 +210,7 @@ export default function useAnalysis() {
         })
         .catch((err) => {
           clearInterval(timerRef.current);
+          if (sessionAtLoad !== loadingSessionRef.current) return;
           setError(
             rejectReasonToMessage(err, "분석 중 오류가 발생했어요."),
           );
@@ -429,6 +437,7 @@ export default function useAnalysis() {
   }, []);
 
   const reset = useCallback(() => {
+    loadingSessionRef.current += 1;
     clearInterval(timerRef.current);
     setStage("main");
     setLoadingStep(0);
