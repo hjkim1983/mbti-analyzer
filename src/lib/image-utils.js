@@ -1,46 +1,19 @@
 /**
- * 이미지 장수에 따른 최대 해상도 / 품질 설정
- * 5장 동시 전송 시 총 페이로드를 ~4MB 이하로 유지
+ * 무료·프리미엄 공통: 긴 변 기준 리사이즈 + JPEG 압축
  */
-const COMPRESS_PRESETS = {
-  1: { maxSize: 1024, quality: 0.82 },
-  2: { maxSize: 900, quality: 0.78 },
-  3: { maxSize: 800, quality: 0.72 },
-  4: { maxSize: 720, quality: 0.68 },
-  5: { maxSize: 640, quality: 0.62 },
-  6: { maxSize: 600, quality: 0.58 },
-  7: { maxSize: 560, quality: 0.56 },
-  8: { maxSize: 520, quality: 0.54 },
-  9: { maxSize: 500, quality: 0.52 },
-  10: { maxSize: 480, quality: 0.5 },
-};
-
-/** 프리미엄: 장수가 많을수록 해상도·품질을 한 단계씩 낮춰 멀티모달 부하 완화 */
-const COMPRESS_PRESETS_PREMIUM = {
-  1: { maxSize: 900, quality: 0.78 },
-  2: { maxSize: 800, quality: 0.72 },
-  3: { maxSize: 720, quality: 0.68 },
-  4: { maxSize: 640, quality: 0.64 },
-  5: { maxSize: 560, quality: 0.58 },
-  6: { maxSize: 520, quality: 0.54 },
-  7: { maxSize: 480, quality: 0.52 },
-  8: { maxSize: 460, quality: 0.5 },
-  9: { maxSize: 440, quality: 0.48 },
-  10: { maxSize: 420, quality: 0.46 },
-};
+const IMAGE_COMPRESS = { maxSize: 500, quality: 0.52 };
 
 /**
  * File → Base64 변환
  * @param {File}   file        - 원본 이미지 파일
- * @param {number} totalImages - 함께 전송할 이미지 총 장수 (압축 강도 결정)
+ * @param {number} totalImages - 호환용(이전 API). 압축 강도에는 사용하지 않음
  * @param {function} [onProgress] - (index, total) 콜백 (선택)
- * @param {{ tier?: 'free'|'premium' }} [options] - premium 이면 전용 압축 프리셋
+ * @param {{ tier?: 'free'|'premium' }} [options] - 호환용. 티어별 압축 차이 없음
  */
 export function fileToBase64(file, totalImages = 1, onProgress, options = {}) {
-  const table =
-    options.tier === "premium" ? COMPRESS_PRESETS_PREMIUM : COMPRESS_PRESETS;
-  const preset =
-    table[Math.min(totalImages, 10)] ?? table[10];
+  void totalImages;
+  void options;
+  const preset = IMAGE_COMPRESS;
 
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
