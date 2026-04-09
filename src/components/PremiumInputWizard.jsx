@@ -352,7 +352,7 @@ export default function PremiumInputWizard({
               className="text-2xl font-extrabold leading-snug mb-3"
               style={{ color: "var(--mbti-warm-text)" }}
             >
-              상대방의 특징을
+              특징 태그를
               <br />
               골라주세요
             </h2>
@@ -360,8 +360,8 @@ export default function PremiumInputWizard({
               className="text-sm mb-5 leading-relaxed"
               style={{ color: "var(--mbti-warm-text-muted)" }}
             >
-              해당되는 항목을 복수 선택할 수 있어요. 비워두고 바로 분석해도
-              돼요.
+              가볍게 복수 선택 가능해요. 순서 섞기로 배치만 바꿀 수 있어요.
+              안 골라도 분석돼요.
             </p>
             <PremiumObserverTraitsCard
               selectedIds={observerTraitIds}

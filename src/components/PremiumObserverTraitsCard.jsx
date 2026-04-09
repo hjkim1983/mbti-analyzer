@@ -1,12 +1,22 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { PREMIUM_OBSERVER_TRAIT_GROUPS } from "@/constants/premium-observer-traits";
 
-const accent = "var(--mbti-warm-accent)";
-const accentSoft = "rgba(232,120,10,0.12)";
+const accentSoft = "rgba(232,120,10,0.14)";
+
+/** 그룹 안 태그 순서만 한 번 섞어서 폼 느낌을 줄임 */
+function shuffleCopy(items) {
+  const a = [...items];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 /**
- * 프리미엄 마지막 단계 — 관찰 특징 복수 선택 + 직접 입력(선택)
+ * 프리미엄 마지막 단계 — 관찰 특징 복수 선택(가벼운 태그) + 직접 입력(선택)
  */
 export default function PremiumObserverTraitsCard({
   selectedIds,
@@ -17,6 +27,14 @@ export default function PremiumObserverTraitsCard({
   const n = selectedIds.length;
   const hasExtra = memoExtra.trim().length > 0;
 
+  const [reroll, setReroll] = useState(0);
+  const groupsToShow = useMemo(() => {
+    return PREMIUM_OBSERVER_TRAIT_GROUPS.map((g) => ({
+      ...g,
+      items: shuffleCopy(g.items),
+    }));
+  }, [reroll]);
+
   return (
     <div className="mbti-warm-card p-4 mb-4">
       <div className="flex items-start justify-between gap-2 mb-3">
@@ -25,38 +43,53 @@ export default function PremiumObserverTraitsCard({
             className="text-sm font-extrabold leading-snug"
             style={{ color: "var(--mbti-warm-text)" }}
           >
-            이 사람의 특징을 골라주세요
+            특징 태그를 골라주세요
           </h3>
           <p
             className="text-xs mt-1 leading-relaxed"
             style={{ color: "var(--mbti-warm-text-muted)" }}
           >
-            해당되는 만큼 복수 선택 가능해요. 선택한 내용은 분석에 반영돼요.
+            해당되는 것만 가볍게 복수 선택. 안 골라도 분석 가능해요.
           </p>
         </div>
-        {n > 0 && (
-          <span
-            className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full"
+        <div className="flex flex-col items-end gap-1.5 shrink-0">
+          {n > 0 ? (
+            <span
+              className="text-[11px] font-bold px-2.5 py-1 rounded-full"
+              style={{
+                background: "rgba(34,197,94,0.12)",
+                color: "#15803d",
+              }}
+            >
+              {n}개
+            </span>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => setReroll((x) => x + 1)}
+            className="text-[10px] font-semibold px-2 py-1 rounded-lg border transition-colors active:scale-[0.98]"
             style={{
-              background: "rgba(34,197,94,0.12)",
-              color: "#15803d",
+              borderColor: "var(--mbti-warm-border)",
+              color: "var(--mbti-warm-text-muted)",
+              background: "rgba(255,255,255,0.6)",
             }}
+            title="각 줄 안에서 태그 순서만 다시 섞어요"
           >
-            {n}개 선택
-          </span>
-        )}
+            순서 섞기
+          </button>
+        </div>
       </div>
 
-      <div className="space-y-4">
-        {PREMIUM_OBSERVER_TRAIT_GROUPS.map((group) => (
+      <div className="space-y-3.5">
+        {groupsToShow.map((group) => (
           <div key={group.title}>
             <p
-              className="text-[10px] font-bold uppercase tracking-wider mb-2"
-              style={{ color: "var(--mbti-warm-text-muted)" }}
+              className="text-[11px] font-bold mb-2"
+              style={{ color: "var(--mbti-warm-text)" }}
             >
               {group.title}
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {group.items.map((item) => {
                 const on = selectedIds.includes(item.id);
                 return (
@@ -64,33 +97,22 @@ export default function PremiumObserverTraitsCard({
                     key={item.id}
                     type="button"
                     onClick={() => onToggleTrait(item.id)}
-                    className="text-left text-xs font-medium px-3 py-2 rounded-xl border transition-all duration-200 active:scale-[0.98]"
+                    className="text-xs font-medium px-2.5 py-1.5 rounded-full border transition-all duration-150 active:scale-[0.97]"
                     style={{
                       borderColor: on
-                        ? "rgba(232,120,10,0.45)"
+                        ? "rgba(232,120,10,0.5)"
                         : "var(--mbti-warm-border)",
-                      background: on ? accentSoft : "rgba(255,255,255,0.5)",
+                      background: on ? accentSoft : "rgba(255,255,255,0.55)",
                       color: on
                         ? "var(--mbti-warm-text)"
                         : "var(--mbti-warm-text-body)",
                       boxShadow: on
-                        ? "0 2px 12px rgba(232,120,10,0.12)"
+                        ? "0 1px 8px rgba(232,120,10,0.1)"
                         : undefined,
                     }}
                   >
-                    <span className="inline-flex items-center gap-1.5">
-                      <span
-                        className="w-4 h-4 rounded border flex items-center justify-center text-[10px] leading-none shrink-0"
-                        style={{
-                          borderColor: on ? accent : "#c4b49a",
-                          background: on ? accent : "transparent",
-                          color: on ? "#fff" : "transparent",
-                        }}
-                      >
-                        {on ? "✓" : ""}
-                      </span>
-                      {item.label}
-                    </span>
+                    {on ? "✓ " : ""}
+                    {item.label}
                   </button>
                 );
               })}
