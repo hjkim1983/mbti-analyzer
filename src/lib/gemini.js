@@ -80,11 +80,8 @@ function throwGeminiHttpError(status, errText) {
   throw err;
 }
 
-/**
- * 프리미엄: 한국어+긴 인용·축별 근거 시 5632 등에서는 MAX_TOKENS로 JSON이 중간에 끊김.
- * gemini-2.5-flash 는 충분히 높은 출력 한도를 지원.
- */
-const PREMIUM_MAX_OUTPUT_TOKENS = 16384;
+/** 프리미엄: 출력 max 12k — 프롬프트·스키마 길이를 이 안에 맞춤 */
+const PREMIUM_MAX_OUTPUT_TOKENS = 12288;
 
 /**
  * 무료: axisAnalysis(축별 forEvidence 다수)·후보 3개·observedFeatures 등으로
@@ -127,19 +124,20 @@ ${skill}
 2. 관찰 가능한 언어·행동 신호를 최소 5개 추출한다.
 3. 제공된 맥락(관계, 행동 관찰 문항 요약, 메모)을 판별하고 분석에 반영한다.
 4. E/I, S/N, T/F, J/P 각 축에 대해 찬성·반대 근거를 함께 기술한다.
-5. 가장 유력한 MBTI 후보를 3개(rank 1~3) 제시한다(단일 확정 문구는 쓰지 않는다). 각 후보에 **confidence**(0~100, 해당 순위 추측 신뢰도, 1순위가 가장 높게)를 넣는다.
-6. **analysisExplanation**에 1~3순위 이유·한계를 **6문장 이내**로 서술한다(토큰 한도로 JSON이 잘리지 않게). 애매한 축은 boundaryNote·analysisLimitations에 반영한다.
+5. 가장 유력한 MBTI 후보를 3개(rank 1~3) 제시한다(단일 확정 문구는 쓰지 않는다). 각 후보에 **confidence**(0~100)를 넣는다.
+6. **analysisExplanation**은 **4문장 이내**. 애매한 축은 boundaryNote·analysisLimitations에 **짧게** 반영한다.
+7. **출력 토큰 한도 내에서 JSON을 반드시 완성**할 것. 장문·과다 나열 금지.
 
 ## 핵심 규칙
 - 한 가지 MBTI만 확정하지 말고 후보 2~3개를 제시한다.
-- 각 축마다 찬성·반대 근거를 **항목당 한 문장** 수준으로 간결히 적는다(장문 인용 금지).
-- **axisAnalysis.forEvidence / againstEvidence**: forEvidence는 **축마다 3개**를 채우는 것을 목표로 한다(대화·프로필·메모·행동문항에서 **서로 다른** 신호 각각 1문장). 데이터가 극히 적을 때만 2개 이하. againstEvidence는 축마다 **1~2개**(반대·예외 신호). 배열 항목끼리 **내용 중복 금지**(합친 요약 뒤 같은 문장 반복 금지).
+- 각 축마다 찬성·반대 근거는 **항목당 한 짧은 문장**(장문 인용·복붙 금지).
+- **axisAnalysis.forEvidence / againstEvidence**: forEvidence는 **축마다 2개** 목표(서로 다른 신호). 극히 적을 때만 1개. againstEvidence는 **축마다 1개**. 배열 항목 **중복 금지**.
 - 프로필 이미지는 보조 신호로만 쓴다.
 - 관찰자 메모가 인상 평가 위주면 가중치를 낮춘다고 boundaryNote에 적는다.
 - 업무 맥락에서는 T/F·J/P 판단에 특히 유의한다.
 
 ## 출력
-사용자 메시지에 적힌 JSON 스키마에만 맞춰 응답한다. JSON만. 한국어. 빈 값은 null 또는 []. 개인정보는 가명·최소 인용.`;
+사용자 메시지의 JSON 스키마에만 맞춘다. JSON만. 한국어. 빈 값은 null 또는 []. 개인정보는 가명·최소 인용. **필드별 길이·개수 상한을 지켜 출력이 중간에 잘리지 않게 할 것.**`;
 }
 
 /** Free: 긴 스킬 문서 없음 — 근거·후보 중심 짧은 JSON (서버에서 레거시 필드 보강) */
@@ -236,6 +234,7 @@ function buildPremiumUserParts({
     text: `## 출력 (JSON만)
 아래 스키마를 정확히 따르세요. tier는 "premium".
 루트에 mbtiType(= candidateTypes rank1 type과 동일 4글자), confidence(숫자), confidenceLevel(HIGH|MEDIUM|LOW), confidenceReason(한 줄)을 반드시 포함하세요.
+**maxOutputTokens 약 12k 한도 — 아래 개수·길이를 넘기지 말 것. JSON이 끝까지 완성되어야 함.**
 
 {
   "tier": "premium",
@@ -243,54 +242,54 @@ function buildPremiumUserParts({
   "confidence": 60,
   "confidenceLevel": "MEDIUM",
   "confidenceReason": "한 줄",
-  "observedFeatures": ["관찰 5~6개, 각 1문장"],
+  "observedFeatures": ["정확히 5개, 각 짧은 한 문장"],
   "axisAnalysis": {
-    "EI": { "result": "E|I", "confidence": 0-100, "forEvidence": ["근거1 한 줄", "근거2 한 줄", "근거3 한 줄"], "againstEvidence": ["반대 한 줄"] },
-    "SN": { "result": "S|N", "confidence": 0-100, "forEvidence": ["…", "…", "…"], "againstEvidence": ["…"] },
-    "TF": { "result": "T|F", "confidence": 0-100, "forEvidence": ["…", "…", "…"], "againstEvidence": ["…"] },
-    "JP": { "result": "J|P", "confidence": 0-100, "forEvidence": ["…", "…", "…"], "againstEvidence": ["…"] }
+    "EI": { "result": "E|I", "confidence": 0-100, "forEvidence": ["근거1 한 줄", "근거2 한 줄"], "againstEvidence": ["반대 한 줄"] },
+    "SN": { "result": "S|N", "confidence": 0-100, "forEvidence": ["…", "…"], "againstEvidence": ["…"] },
+    "TF": { "result": "T|F", "confidence": 0-100, "forEvidence": ["…", "…"], "againstEvidence": ["…"] },
+    "JP": { "result": "J|P", "confidence": 0-100, "forEvidence": ["…", "…"], "againstEvidence": ["…"] }
   },
   "candidateTypes": [
-    { "type": "XXXX", "rank": 1, "confidence": 60, "reason": "근거 2문장 이내" },
-    { "type": "YYYY", "rank": 2, "confidence": 48, "reason": "…" },
-    { "type": "ZZZZ", "rank": 3, "confidence": 38, "reason": "…" }
+    { "type": "XXXX", "rank": 1, "confidence": 60, "reason": "한 문장" },
+    { "type": "YYYY", "rank": 2, "confidence": 48, "reason": "한 문장" },
+    { "type": "ZZZZ", "rank": 3, "confidence": 38, "reason": "한 문장" }
   ],
-  "analysisExplanation": "선정 이유+한계, 6문장 이내",
-  "boundaryNote": "가장 애매한 축·맥락 요인",
-  "analysisLimitations": "문자열 한 덩어리(데이터 부족·단일 상대 등)",
-  "communicationTips": ["팁1", "팁2", "팁3"],
-  "profileImageNote": "프로필·배경 보조 신호(없으면 빈 문자열)",
-  "oneLineConclusion": "한 줄 결론",
+  "analysisExplanation": "4문장 이내",
+  "boundaryNote": "애매한 축·맥락, 2문장 이내",
+  "analysisLimitations": "한계 요약 2~3문장(데이터 부족 등)",
+  "communicationTips": ["팁1 한 줄", "팁2 한 줄", "팁3 한 줄"],
+  "profileImageNote": "한 줄 또는 빈 문자열",
+  "oneLineConclusion": "한 줄",
   "keyEvidenceSummary": [{ "snippet": "한 줄", "axis": "EI", "insight": "한 줄" }],
   "practicalTips": {
-    "emotionVsDirect": "감정 표현 vs 사실·논리 전달 선호를 대화 근거와 연결해 2~4문장",
-    "effectiveCommunication": ["이 사람에게 잘 통하는 말하기·톤·문장 예시 4~6개, 각 1문장"],
-    "whenHurt": ["서운함·불만을 전할 때 주의·추천 표현 3~5개"],
-    "conflictAvoid": ["갈등 시 피하면 좋은 말·톤·태도 3~5개"],
-    "scheduling": ["약속·일정·협의할 때 팁 3~5개"]
+    "emotionVsDirect": "2문장 이내",
+    "effectiveCommunication": ["예시 2~3개, 각 한 줄"],
+    "whenHurt": ["2~3개, 각 한 줄"],
+    "conflictAvoid": ["2~3개, 각 한 줄"],
+    "scheduling": ["2~3개, 각 한 줄"]
   },
   "relationshipAndCommunication": {
-    "summary": "관계·소통 전체 톤 4~6문장. 대화에서 본 근거 1문장 + 추정 한계 1문장 포함",
-    "whenInterested": "호감·관심이 있을 때 말투·리액션·주도성 3~5문장, 구체 행동 예시 1개 이상",
-    "whenUncomfortable": "불편·거리 둘 때 신호·회피 패턴 3~5문장",
-    "whenClose": "친밀해졌을 때 변화·기대에 맞는 소통 3~5문장",
-    "inConflict": "갈등·오해 시 반응과 화해에 도움이 되는 접근 3~5문장",
-    "replyAndEmoji": "답장 속도·이모지·말끝·장문/단문 선호 2~4문장",
-    "contactPreference": "연락 빈도·채널·무응답 해석 시 주의점 3~5문장",
-    "tips": ["연락·만남 전 실행 팁 4~7개, 각 1~2문장"]
+    "summary": "3문장 이내",
+    "whenInterested": "2문장 이내",
+    "whenUncomfortable": "2문장 이내",
+    "whenClose": "2문장 이내",
+    "inConflict": "2문장 이내",
+    "replyAndEmoji": "2문장 이내",
+    "contactPreference": "2문장 이내",
+    "tips": ["4개, 각 한 줄"]
   },
   "workAndRoutine": {
-    "summary": "업무·학습·협업 스타일 4~6문장: 마감·역할·피드백·집중 방식을 대화/메모 근거와 연결",
-    "tips": ["회의·과제·협업·리마인드 등 구체 행동 팁 5~8개, 각 1~2문장"]
+    "summary": "3문장 이내",
+    "tips": ["4~5개, 각 한 줄"]
   },
-  "cautionAndMisread": { "points": [] },
+  "cautionAndMisread": { "points": ["최대 3개, 각 한 줄"] },
   "quotedInsights": [],
-  "tags": ["#태그"]
+  "tags": ["#태그1", "#태그2"]
 }
 
-축 confidence는 해당 축 판단 강도(0~100). 후보 3개 type은 서로 다르게. 후보별 confidence는 루트 confidence와 조화(1순위 ≥ 2순위 ≥ 3순위). 빈 값 null/[].
+축 confidence는 해당 축 판단 강도(0~100). 후보 3개 type은 서로 다르게. 1순위 confidence ≥ 2순위 ≥ 3순위. 빈 값 null/[].
 
-**중요**: JSON이 잘리면 무효입니다. axisAnalysis **각 축 forEvidence는 3개**(목표)·**againstEvidence는 1~2개**를 한 줄씩, **항목 간 중복 없이**. candidateTypes reason·keyEvidenceSummary(최대 5개)도 한 줄 위주. **relationshipAndCommunication·workAndRoutine·practicalTips**는 프리미엄 가치 핵심이므로 **실전 조언을 충분히**(각 문자열 필드 최소 2~3문장, tips는 풍부하게) 작성하세요.`,
+**중요**: forEvidence **축당 정확히 2개**, againstEvidence **축당 1개**, **문장 중복 금지**. keyEvidenceSummary **최대 3개**. quotedInsights는 비우거나 최대 2개(각 한 줄). **한도를 넘기면 안 됨.**`,
   });
 
   return parts;
