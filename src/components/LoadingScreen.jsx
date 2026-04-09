@@ -52,7 +52,6 @@ export default function LoadingScreen({
   isMulti,
   hasMemo,
   imageCount,
-  sentImageCount = imageCount,
   mode = ANALYSIS_MODE.FREE,
 }) {
   const { steps, messages, icons, subtitle } = getLoadingSteps(
@@ -127,17 +126,6 @@ export default function LoadingScreen({
           />
         </div>
       </div>
-
-      {isMulti && (
-        <span
-          className="text-xs font-bold px-3 py-1 rounded-full mb-4"
-          style={{ background: "rgba(254,229,0,0.2)", color: "#856C00" }}
-        >
-          {sentImageCount < imageCount
-            ? `✨ 종합 분석 · 업로드 ${imageCount}장 → AI ${sentImageCount}장`
-            : `✨ 종합 분석 모드 · ${imageCount}장`}
-        </span>
-      )}
 
       {/* 프로그레스 도트 */}
       <div className="flex gap-2 mb-8">

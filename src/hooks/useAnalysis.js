@@ -52,11 +52,6 @@ export default function useAnalysis() {
   const timerRef = useRef(null);
 
   const imageCount = images.length;
-  /** API로 실제 전송되는 장수(프리미엄은 대표 샘플만) */
-  const sentImageCount =
-    activeTab === "premium"
-      ? Math.min(imageCount, MAX_IMAGES_SENT_PREMIUM)
-      : imageCount;
   const maxImages =
     activeTab === "premium" ? MAX_IMAGES_PREMIUM : MAX_IMAGES_FREE;
   const isMulti = imageCount >= 2;
@@ -499,7 +494,6 @@ export default function useAnalysis() {
     isChecking,
     isAnalysisBusy,
     imageCount,
-    sentImageCount,
     maxImages,
     isMulti,
     hasMemo,

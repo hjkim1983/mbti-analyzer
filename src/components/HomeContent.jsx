@@ -427,7 +427,6 @@ export default function HomeContent() {
             isMulti={analysis.isMulti}
             hasMemo={analysis.hasMemo}
             imageCount={analysis.images.length}
-            sentImageCount={analysis.sentImageCount}
             mode={loadingMode}
           />
         )}
