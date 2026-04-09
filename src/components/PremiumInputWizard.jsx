@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useMemo } from "react";
 import UploadCard from "@/components/UploadCard";
-import PremiumObserverTraitsCard from "@/components/PremiumObserverTraitsCard";
 import AnalyzeButton from "@/components/AnalyzeButton";
 import { RELATIONSHIP_OPTIONS } from "@/constants/mbti-data";
 import { BEHAVIOR_QUESTIONS } from "@/constants/behavior-questions";
@@ -20,15 +19,13 @@ const REL_GRID_ICONS = {
 };
 
 /**
- * 프리미엄 입력 — 업로드 → 관계 → 문항 1개씩 → 관찰 특징(복수)·분석 (v5 스타일)
+ * 프리미엄 입력 — 업로드 → 관계 → 문항 1개씩 → 입력 확인·분석
  */
 export default function PremiumInputWizard({
   onBackToTier,
   images,
   targetName,
   memo,
-  observerTraitIds,
-  onToggleObserverTrait,
   relationship,
   behaviorAnswers,
   onAddImages,
@@ -52,7 +49,7 @@ export default function PremiumInputWizard({
   const [fadeKey, setFadeKey] = useState(0);
 
   const nQ = BEHAVIOR_QUESTIONS.length;
-  /** 0 업로드, 1 관계, 2..(1+nQ) 문항, 마지막 관찰 특징 */
+  /** 0 업로드, 1 관계, 2..(1+nQ) 문항, 마지막 입력 확인 */
   const totalSteps = 2 + nQ + 1;
   const lastStep = totalSteps - 1;
 
@@ -103,7 +100,7 @@ export default function PremiumInputWizard({
         ? "관계 설정"
         : questionIndex >= 0
           ? `질문 ${questionIndex + 1}/${nQ}`
-          : "관찰 특징";
+          : "입력 확인";
 
   const handleAnswer = (qId, choice) => {
     onBehaviorAnswer(qId, choice);
@@ -347,29 +344,65 @@ export default function PremiumInputWizard({
 
         {step === lastStep && (
           <div>
-            <StepBadge num="✦" />
+            <StepBadge num="✓" />
             <h2
               className="text-2xl font-extrabold leading-snug mb-3"
               style={{ color: "var(--mbti-warm-text)" }}
             >
-              특징 태그를
+              입력을 확인하고
               <br />
-              골라주세요
+              분석을 시작할게요
             </h2>
             <p
               className="text-sm mb-5 leading-relaxed"
               style={{ color: "var(--mbti-warm-text-muted)" }}
             >
-              가볍게 복수 선택 가능해요. 안 골라도 분석돼요.
+              추가로 알려주실 내용이 있으면 적어주세요. (선택)
             </p>
-            <PremiumObserverTraitsCard
-              selectedIds={observerTraitIds}
-              onToggleTrait={onToggleObserverTrait}
-              memoExtra={memo}
-              onMemoExtraChange={onMemoChange}
-            />
             <div
-              className="mbti-warm-card mt-6 p-4 text-sm leading-8"
+              className="mbti-warm-card p-4 mb-4"
+              style={{ borderColor: "var(--mbti-warm-border)" }}
+            >
+              <label
+                className="text-xs font-bold block mb-2"
+                style={{ color: "var(--mbti-warm-text)" }}
+              >
+                직접 적고 싶은 내용{" "}
+                <span
+                  className="font-normal"
+                  style={{ color: "var(--mbti-warm-text-muted)" }}
+                >
+                  (선택)
+                </span>
+              </label>
+              <textarea
+                value={memo}
+                onChange={(e) => onMemoChange(e.target.value.slice(0, 300))}
+                placeholder="대화만으로는 드러나지 않는 관찰을 짧게 적어주세요"
+                rows={3}
+                className="w-full text-sm rounded-2xl p-3.5 resize-none bg-white/70"
+                style={{
+                  border:
+                    memo.trim().length > 0
+                      ? "1.5px solid rgba(232,120,10,0.35)"
+                      : "1.5px solid var(--mbti-warm-border)",
+                  color: "var(--mbti-warm-text-body)",
+                  lineHeight: 1.65,
+                }}
+              />
+              <div className="flex justify-end mt-1">
+                <span
+                  className="text-[11px] tabular-nums"
+                  style={{
+                    color: memo.length > 260 ? "#EF4444" : "#c4b49a",
+                  }}
+                >
+                  {memo.length} / 300
+                </span>
+              </div>
+            </div>
+            <div
+              className="mbti-warm-card mt-2 p-4 text-sm leading-8"
               style={{ color: "var(--mbti-warm-text-body)" }}
             >
               <div
@@ -388,10 +421,7 @@ export default function PremiumInputWizard({
                 ✅{" "}
                 {Object.keys(behaviorAnswers).length}/{nQ} 문항
               </div>
-              {observerTraitIds.length > 0 ? (
-                <div>🏷️ 특징 {observerTraitIds.length}개 선택</div>
-              ) : null}
-              {memo.trim() ? <div>📝 직접 입력 있음</div> : null}
+              {memo.trim() ? <div>📝 추가 메모 있음</div> : null}
             </div>
             <AnalyzeButton
               canAnalyze={canAnalyze}
@@ -402,9 +432,7 @@ export default function PremiumInputWizard({
               onAnalyze={requestAnalysis}
               isLoading={isAnalysisBusy}
               isDeepTab
-              memoLength={
-                observerTraitIds.length + memo.trim().length
-              }
+              memoLength={memo.trim().length}
               relationshipOk={Boolean(relationship)}
               behaviorOk={allBehaviorAnswered}
               formIncompleteHint={formIncompleteHint}

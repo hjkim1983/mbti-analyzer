@@ -118,7 +118,7 @@ export default function TierPickScreen({
                 className="text-xs leading-relaxed flex-1"
                 style={{ color: "var(--mbti-warm-text-body)" }}
               >
-                캡처 → 관계 → 관찰 문항 → 특징 선택 순으로 진행하고, 결제 후
+                캡처 → 관계 → 관찰 문항 → 입력 확인 순으로 진행하고, 결제 후
                 풀 리포트를 받아요.
               </p>
               <div className="mt-2 min-h-[1.75rem] flex items-end">

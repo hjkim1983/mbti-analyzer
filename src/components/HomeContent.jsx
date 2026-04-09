@@ -367,8 +367,6 @@ export default function HomeContent() {
               images={analysis.images}
               targetName={analysis.targetName}
               memo={analysis.memo}
-              observerTraitIds={analysis.observerTraitIds}
-              onToggleObserverTrait={analysis.toggleObserverTrait}
               relationship={analysis.relationship}
               behaviorAnswers={analysis.behaviorAnswers}
               onAddImages={analysis.addImages}

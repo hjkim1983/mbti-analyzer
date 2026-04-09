@@ -18,8 +18,6 @@ import {
   isDevModeClient,
   summarizeAnalyzeBodyForLog,
 } from "@/lib/dev-mode";
-import { composePremiumObserverMemo } from "@/lib/premium-memo-compose";
-
 /** Promise 거부값이 Event 등 비-Error 일 때 [object Event] 방지 */
 function rejectReasonToMessage(err, fallback) {
   if (typeof err === "string" && err.trim()) return err;
@@ -38,7 +36,6 @@ export default function useAnalysis() {
   const [images, setImages] = useState([]);
   const [targetName, setTargetName] = useState("");
   const [memo, setMemo] = useState("");
-  const [observerTraitIds, setObserverTraitIds] = useState([]);
   const [relationship, setRelationship] = useState(null);
   /** { q1: "A"|"B"|"skip", ... } */
   const [behaviorAnswers, setBehaviorAnswers] = useState({});
@@ -55,8 +52,7 @@ export default function useAnalysis() {
   const maxImages =
     activeTab === "premium" ? MAX_IMAGES_PREMIUM : MAX_IMAGES_FREE;
   const isMulti = imageCount >= 2;
-  const hasMemo =
-    observerTraitIds.length > 0 || memo.trim().length > 0;
+  const hasMemo = memo.trim().length > 0;
   const isPremiumTab = activeTab === "premium";
 
   const answeredCount = Object.keys(behaviorAnswers).length;
@@ -99,11 +95,10 @@ export default function useAnalysis() {
     })();
   }, []);
 
-  /** Free 탭에서는 캡처만 — 메모·관찰 특징 비움 */
+  /** Free 탭에서는 캡처만 — 메모 비움 */
   useEffect(() => {
     if (!isPremiumTab) {
       setMemo("");
-      setObserverTraitIds([]);
     }
   }, [isPremiumTab]);
 
@@ -136,7 +131,6 @@ export default function useAnalysis() {
     setActiveTabState(tabId);
     if (tabId === "free") {
       setMemo("");
-      setObserverTraitIds([]);
       setImages((prev) => {
         if (prev.length <= MAX_IMAGES_FREE) return prev;
         const kept = prev.slice(0, MAX_IMAGES_FREE);
@@ -164,20 +158,11 @@ export default function useAnalysis() {
     setImages([]);
     setTargetName("");
     setMemo("");
-    setObserverTraitIds([]);
     setRelationship(null);
     setBehaviorAnswers({});
     setActiveTabState("free");
     setFlowPhase("pickTier");
   }, [images]);
-
-  const toggleObserverTrait = useCallback((traitId) => {
-    setObserverTraitIds((prev) =>
-      prev.includes(traitId)
-        ? prev.filter((id) => id !== traitId)
-        : [...prev, traitId],
-    );
-  }, []);
 
   const setBehaviorAnswer = useCallback((questionId, choice) => {
     setBehaviorAnswers((prev) => ({ ...prev, [questionId]: choice }));
@@ -259,7 +244,7 @@ export default function useAnalysis() {
         memo:
           mode === ANALYSIS_MODE.FREE
             ? ""
-            : composePremiumObserverMemo(observerTraitIds, memo),
+            : (memo && String(memo).trim()) || "",
         images: base64Images,
         paymentId,
         mode,
@@ -313,7 +298,6 @@ export default function useAnalysis() {
       images,
       targetName,
       memo,
-      observerTraitIds,
       isPremiumTab,
       relationship,
       behaviorAnswers,
@@ -455,7 +439,6 @@ export default function useAnalysis() {
     setImages([]);
     setTargetName("");
     setMemo("");
-    setObserverTraitIds([]);
     setRelationship(null);
     setBehaviorAnswers({});
     setError(null);
@@ -479,8 +462,6 @@ export default function useAnalysis() {
     images,
     targetName,
     memo,
-    observerTraitIds,
-    toggleObserverTrait,
     relationship,
     behaviorAnswers,
     answeredCount,
