@@ -17,8 +17,15 @@ function getGeminiGenerateContentUrl() {
   return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 }
 
-/** API 라우트 maxDuration(60s)보다 짧게 — 긴 JSON 생성 시 여유 */
-const TIMEOUT_MS = 58000;
+/** 무료: API 라우트 한도 안에서 여유 있게 */
+const TIMEOUT_MS_FREE = 55000;
+
+/**
+ * 프리미엄: 다중 이미지 + 긴 시스템 프롬프트 + maxOutputTokens 16k 근처면
+ * Gemini 응답이 60초를 넘기는 경우가 있음 → 별도 상한 사용.
+ * (배포 환경의 `maxDuration`과 맞출 것)
+ */
+const TIMEOUT_MS_PREMIUM = 115000;
 
 /** 503·UNAVAILABLE 등 일시 오류 시 재시도 (환경변수로 조절, 기본 5회·최대 8회) */
 function getGeminiMaxRetries() {
@@ -400,13 +407,22 @@ function parseGeminiAnalysisJson(raw) {
   return null;
 }
 
-async function postGemini(body) {
+/**
+ * @param {object} body
+ * @param {{ timeoutMs?: number }} [opts]
+ */
+async function postGemini(body, opts = {}) {
   const apiKey =
     process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
   if (!apiKey) {
     throw new Error("Gemini API 키가 설정되지 않았습니다.");
   }
+
+  const timeoutMs =
+    typeof opts.timeoutMs === "number" && opts.timeoutMs > 0
+      ? opts.timeoutMs
+      : TIMEOUT_MS_FREE;
 
   const maxAttempts = getGeminiMaxRetries();
   const baseDelayMs = getGeminiRetryBaseMs();
@@ -415,7 +431,7 @@ async function postGemini(body) {
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
       const endpoint = getGeminiGenerateContentUrl();
@@ -560,7 +576,7 @@ async function callGeminiFree({
     ],
   };
 
-  return postGemini(body);
+  return postGemini(body, { timeoutMs: TIMEOUT_MS_FREE });
 }
 
 async function callGeminiPremium({
@@ -602,7 +618,7 @@ async function callGeminiPremium({
     ],
   };
 
-  return postGemini(body);
+  return postGemini(body, { timeoutMs: TIMEOUT_MS_PREMIUM });
 }
 
 /**

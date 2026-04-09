@@ -56,8 +56,12 @@ function sanitizeRelationship(v) {
   return typeof v === "string" && RELATIONSHIP_ALLOWED.has(v) ? v : null;
 }
 
-// Vercel Hobby: 최대 60초 — 심층(최대 10장) 처리 시간 확보
-export const maxDuration = 60;
+/**
+ * 프리미엄: 다중 이미지·긴 JSON 생성 시 60초를 넘길 수 있음.
+ * Vercel Hobby는 플랜상 최대 60초로 제한될 수 있음 → 그 경우 Hobby에서는
+ * 타임아웃이 날 수 있으니 Pro 이상 또는 self-host에서 120 권장.
+ */
+export const maxDuration = 120;
 
 export async function POST(request) {
   const devMode = isDevModeServer();
