@@ -1,19 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import { PREMIUM_OBSERVER_TRAIT_GROUPS } from "@/constants/premium-observer-traits";
 
 const accentSoft = "rgba(232,120,10,0.14)";
-
-/** 그룹 안 태그 순서만 한 번 섞어서 폼 느낌을 줄임 */
-function shuffleCopy(items) {
-  const a = [...items];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
 
 /**
  * 프리미엄 마지막 단계 — 관찰 특징 복수 선택(가벼운 태그) + 직접 입력(선택)
@@ -26,14 +15,6 @@ export default function PremiumObserverTraitsCard({
 }) {
   const n = selectedIds.length;
   const hasExtra = memoExtra.trim().length > 0;
-
-  const [reroll, setReroll] = useState(0);
-  const groupsToShow = useMemo(() => {
-    return PREMIUM_OBSERVER_TRAIT_GROUPS.map((g) => ({
-      ...g,
-      items: shuffleCopy(g.items),
-    }));
-  }, [reroll]);
 
   return (
     <div className="mbti-warm-card p-4 mb-4">
@@ -52,36 +33,21 @@ export default function PremiumObserverTraitsCard({
             해당되는 것만 가볍게 복수 선택. 안 골라도 분석 가능해요.
           </p>
         </div>
-        <div className="flex flex-col items-end gap-1.5 shrink-0">
-          {n > 0 ? (
-            <span
-              className="text-[11px] font-bold px-2.5 py-1 rounded-full"
-              style={{
-                background: "rgba(34,197,94,0.12)",
-                color: "#15803d",
-              }}
-            >
-              {n}개
-            </span>
-          ) : null}
-          <button
-            type="button"
-            onClick={() => setReroll((x) => x + 1)}
-            className="text-[10px] font-semibold px-2 py-1 rounded-lg border transition-colors active:scale-[0.98]"
+        {n > 0 ? (
+          <span
+            className="text-[11px] font-bold px-2.5 py-1 rounded-full shrink-0"
             style={{
-              borderColor: "var(--mbti-warm-border)",
-              color: "var(--mbti-warm-text-muted)",
-              background: "rgba(255,255,255,0.6)",
+              background: "rgba(34,197,94,0.12)",
+              color: "#15803d",
             }}
-            title="각 줄 안에서 태그 순서만 다시 섞어요"
           >
-            순서 섞기
-          </button>
-        </div>
+            {n}개
+          </span>
+        ) : null}
       </div>
 
       <div className="space-y-3.5">
-        {groupsToShow.map((group) => (
+        {PREMIUM_OBSERVER_TRAIT_GROUPS.map((group) => (
           <div key={group.title}>
             <p
               className="text-[11px] font-bold mb-2"

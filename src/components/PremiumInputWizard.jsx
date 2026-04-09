@@ -360,8 +360,7 @@ export default function PremiumInputWizard({
               className="text-sm mb-5 leading-relaxed"
               style={{ color: "var(--mbti-warm-text-muted)" }}
             >
-              가볍게 복수 선택 가능해요. 순서 섞기로 배치만 바꿀 수 있어요.
-              안 골라도 분석돼요.
+              가볍게 복수 선택 가능해요. 안 골라도 분석돼요.
             </p>
             <PremiumObserverTraitsCard
               selectedIds={observerTraitIds}
